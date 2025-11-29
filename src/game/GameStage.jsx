@@ -1,0 +1,818 @@
+import { Application, extend, useApplication } from '@pixi/react'
+import { Container, Graphics, Text } from 'pixi.js'
+import { useRef, useState, useEffect, useCallback, useMemo } from 'react'
+import {
+  BIOMES,
+  getBiomeForDistance,
+  drawTerrain,
+  drawParticles,
+  ENEMY_TYPES,
+  drawEnemy,
+  drawHealthBar,
+  drawPlatform,
+  drawLadder,
+  PLATFORM_STYLES,
+  LADDER_STYLES,
+} from './components'
+import { PhysicsEngine, PLATFORM_LEVELS } from './PhysicsEngine'
+import { useGameLoop } from './useGameLoop'
+
+// Extend PixiJS components for React
+extend({ Container, Graphics, Text })
+
+// Game constants
+const ATTACK_RANGE = 200
+const BASE_ATTACK_SPEED = 1000
+const ENEMY_SPAWN_RATE = 2500
+const CLIMB_SPEED = 180
+const MOVE_SPEED = 200
+const JUMP_FORCE = 14
+const PLATFORM_CHUNK_SIZE = 400
+const PLATFORM_WIDTH_MIN = 150
+const PLATFORM_WIDTH_MAX = 300
+
+// XP calculation
+const xpForLevel = (level) => Math.floor(100 * Math.pow(1.5, level - 1))
+
+// ID generator
+let idCounter = 0
+const generateId = () => ++idCounter
+
+// Seeded random
+const seededRandom = (seed) => {
+  const x = Math.sin(seed * 9999) * 10000
+  return x - Math.floor(x)
+}
+
+// Character drawing function
+function drawCharacter(g, isAttacking, isClimbing, isMoving, isJumping, isFalling) {
+  g.clear()
+  
+  const attackOffset = isAttacking ? 5 : 0
+  const inAir = isJumping || isFalling
+  
+  // Legs
+  g.fill({ color: 0x4a3728 })
+  if (isJumping) {
+    // Jumping pose - legs tucked
+    g.rect(-10, 35, 8, 18)
+    g.rect(2, 38, 8, 15)
+  } else if (isFalling) {
+    // Falling pose - legs spread
+    g.rect(-12, 32, 8, 26)
+    g.rect(4, 32, 8, 26)
+  } else if (isMoving && !isClimbing) {
+    const time = Date.now() / 100
+    const legOffset = Math.sin(time) * 4
+    g.rect(-8, 35, 8, 25 + legOffset)
+    g.rect(0, 35, 8, 25 - legOffset)
+  } else if (isClimbing) {
+    const time = Date.now() / 200
+    const climbOffset = Math.sin(time) * 3
+    g.rect(-10, 30 + climbOffset, 8, 28)
+    g.rect(2, 38 - climbOffset, 8, 20)
+  } else {
+    g.rect(-8, 35, 8, 25)
+    g.rect(0, 35, 8, 25)
+  }
+  g.fill()
+  
+  // Body
+  const bodyTilt = isJumping ? -2 : (isFalling ? 2 : 0)
+  g.fill({ color: 0x5a6a7a })
+  g.roundRect(-15, 5 + bodyTilt, 30, 35, 4)
+  g.fill()
+  
+  // Body highlight
+  g.fill({ color: 0x6a7a8a })
+  g.roundRect(-12, 8 + bodyTilt, 24, 10, 2)
+  g.fill()
+  
+  // Head
+  g.fill({ color: 0xffdbac })
+  g.circle(0, -8 + bodyTilt, 12)
+  g.fill()
+  
+  // Helmet
+  g.fill({ color: 0x7a8a9a })
+  g.moveTo(-14, -5 + bodyTilt)
+  g.lineTo(-14, -15 + bodyTilt)
+  g.lineTo(0, -25 + bodyTilt)
+  g.lineTo(14, -15 + bodyTilt)
+  g.lineTo(14, -5 + bodyTilt)
+  g.closePath()
+  g.fill()
+  
+  // Helmet visor
+  g.fill({ color: 0x2a3a4a })
+  g.rect(-8, -12 + bodyTilt, 16, 6)
+  g.fill()
+  
+  // Eyes
+  g.fill({ color: 0xffffff })
+  g.circle(-4, -9 + bodyTilt, 2)
+  g.circle(4, -9 + bodyTilt, 2)
+  g.fill()
+  g.fill({ color: 0x000000 })
+  g.circle(-4, -9 + bodyTilt, 1)
+  g.circle(4, -9 + bodyTilt, 1)
+  g.fill()
+  
+  // Arms (adjusted for jumping/falling)
+  if (inAir && !isAttacking) {
+    // Arms raised during jump
+    g.fill({ color: 0x5a6a7a })
+    g.rect(-20, 8 + bodyTilt, 8, 20)
+    g.rect(12, 5 + bodyTilt, 8, 22)
+    g.fill()
+  }
+  
+  // Sword
+  const swordX = isAttacking ? 25 + attackOffset : (inAir ? 20 : 18)
+  const swordY = isAttacking ? -5 : (isJumping ? 0 : (isFalling ? 15 : 10))
+  
+  g.fill({ color: 0x4a3728 })
+  g.rect(swordX - 3, swordY + 15, 6, 12)
+  g.fill()
+  
+  g.fill({ color: 0xffd700 })
+  g.rect(swordX - 8, swordY + 12, 16, 4)
+  g.fill()
+  
+  g.fill({ color: isAttacking ? 0xffffff : 0xd0d0d0 })
+  g.moveTo(swordX - 4, swordY + 12)
+  g.lineTo(swordX + 4, swordY + 12)
+  g.lineTo(swordX + 3, swordY - 25)
+  g.lineTo(swordX, swordY - 30)
+  g.lineTo(swordX - 3, swordY - 25)
+  g.closePath()
+  g.fill()
+}
+
+// Game content component (inside Application)
+function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate }) {
+  const app = useApplication()
+  
+  // Physics engine
+  const physicsRef = useRef(null)
+  
+  // Graphics refs
+  const terrainRef = useRef(null)
+  const particlesRef = useRef(null)
+  const characterRef = useRef(null)
+  
+  // Game state
+  const [playerPos, setPlayerPos] = useState({ x: 200, y: 0 })
+  const [facingRight, setFacingRight] = useState(true)
+  const [isAttacking, setIsAttacking] = useState(false)
+  const [isClimbing, setIsClimbing] = useState(false)
+  const [isMoving, setIsMoving] = useState(false)
+  const [isJumping, setIsJumping] = useState(false)
+  const [isFalling, setIsFalling] = useState(false)
+  const [nearbyLadder, setNearbyLadder] = useState(null)
+  
+  // World objects
+  const [platforms, setPlatforms] = useState([])
+  const [ladders, setLadders] = useState([])
+  const [enemies, setEnemies] = useState([])
+  const [damageNumbers, setDamageNumbers] = useState([])
+  const [goldPickups, setGoldPickups] = useState([])
+  
+  // Character stats
+  const [character, setCharacter] = useState({
+    level: 1,
+    xp: 0,
+    xpToNext: 100,
+    maxHealth: 100,
+    health: 100,
+    baseDamage: 10,
+    critChance: 0.1,
+    critMultiplier: 2,
+    attackSpeed: BASE_ATTACK_SPEED,
+    gold: 0,
+  })
+  
+  // Refs for timing
+  const keysPressed = useRef({ up: false, down: false, left: false, right: false, jump: false })
+  const jumpCooldownRef = useRef(0)
+  const lastPlatformChunkRef = useRef(0)
+  const lastAttackRef = useRef(0)
+  const lastSpawnRef = useRef(0)
+  
+  // Initialize physics
+  useEffect(() => {
+    physicsRef.current = new PhysicsEngine()
+    physicsRef.current.createPlayer(200, 0)
+    
+    return () => {
+      physicsRef.current?.destroy()
+    }
+  }, [])
+  
+  // Update parent with stats
+  useEffect(() => {
+    onStatsUpdate?.(character)
+  }, [character, onStatsUpdate])
+  
+  // Update distance
+  useEffect(() => {
+    onDistanceUpdate?.(playerPos.x)
+  }, [playerPos.x, onDistanceUpdate])
+  
+  // Calculate camera offset
+  const characterScreenX = width * 0.3
+  const scrollOffset = Math.max(0, playerPos.x - characterScreenX)
+  const currentBiome = getBiomeForDistance(playerPos.x)
+  const biome = BIOMES[currentBiome]
+  
+  // Keyboard input
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') keysPressed.current.up = true
+      if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') keysPressed.current.down = true
+      if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keysPressed.current.left = true
+      if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keysPressed.current.right = true
+      if (e.key === ' ' || e.key === 'Spacebar') {
+        e.preventDefault() // Prevent page scroll
+        keysPressed.current.jump = true
+      }
+    }
+    
+    const handleKeyUp = (e) => {
+      if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') keysPressed.current.up = false
+      if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') keysPressed.current.down = false
+      if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keysPressed.current.left = false
+      if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keysPressed.current.right = false
+      if (e.key === ' ' || e.key === 'Spacebar') keysPressed.current.jump = false
+    }
+    
+    window.addEventListener('keydown', handleKeyDown)
+    window.addEventListener('keyup', handleKeyUp)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('keyup', handleKeyUp)
+    }
+  }, [])
+  
+  // Generate platforms and ladders
+  const generatePlatformsAndLadders = useCallback((viewEnd) => {
+    const physics = physicsRef.current
+    if (!physics) return
+    
+    const startChunk = Math.floor(lastPlatformChunkRef.current / PLATFORM_CHUNK_SIZE)
+    const endChunk = Math.floor((viewEnd + 600) / PLATFORM_CHUNK_SIZE)
+    
+    const newPlatforms = []
+    const newLadders = []
+    
+    for (let chunk = startChunk; chunk <= endChunk; chunk++) {
+      const chunkStart = chunk * PLATFORM_CHUNK_SIZE
+      if (chunkStart <= lastPlatformChunkRef.current) continue
+      
+      const levels = ['level1', 'level2', 'level3']
+      
+      levels.forEach((levelKey, levelIndex) => {
+        const probability = 0.7 - (levelIndex * 0.15)
+        
+        if (seededRandom(chunk * 17 + levelIndex * 31) < probability) {
+          const platformWidth = PLATFORM_WIDTH_MIN + seededRandom(chunk * 23 + levelIndex * 41) * (PLATFORM_WIDTH_MAX - PLATFORM_WIDTH_MIN)
+          const xOffset = seededRandom(chunk * 37 + levelIndex * 53) * (PLATFORM_CHUNK_SIZE - platformWidth)
+          
+          const platform = {
+            id: generateId(),
+            worldX: chunkStart + xOffset,
+            height: PLATFORM_LEVELS[levelKey],
+            width: platformWidth,
+            level: levelKey,
+          }
+          newPlatforms.push(platform)
+          physics.createPlatform(platform.id, platform.worldX, platform.height, platform.width)
+          
+          if (seededRandom(chunk * 47 + levelIndex * 61) < 0.6) {
+            const lowerLevel = levelIndex === 0 ? 'ground' : levels[levelIndex - 1]
+            const ladderX = platform.worldX + platformWidth * (0.3 + seededRandom(chunk * 59 + levelIndex * 67) * 0.4)
+            
+            const ladder = {
+              id: generateId(),
+              worldX: ladderX,
+              bottomHeight: PLATFORM_LEVELS[lowerLevel],
+              topHeight: PLATFORM_LEVELS[levelKey],
+            }
+            newLadders.push(ladder)
+            physics.addLadder(ladder)
+          }
+        }
+      })
+      
+      lastPlatformChunkRef.current = chunkStart
+    }
+    
+    if (newPlatforms.length > 0) {
+      setPlatforms(prev => {
+        const toRemove = prev.filter(p => p.worldX < scrollOffset - 800)
+        toRemove.forEach(p => physics.removePlatform(p.id))
+        return [...prev.filter(p => p.worldX > scrollOffset - 800), ...newPlatforms]
+      })
+    }
+    if (newLadders.length > 0) {
+      setLadders(prev => {
+        const toRemove = prev.filter(l => l.worldX < scrollOffset - 800)
+        toRemove.forEach(l => physics.removeLadder(l.id))
+        return [...prev.filter(l => l.worldX > scrollOffset - 800), ...newLadders]
+      })
+    }
+  }, [scrollOffset])
+  
+  // Spawn enemy
+  const spawnEnemy = useCallback(() => {
+    const physics = physicsRef.current
+    if (!physics) return
+    
+    const distanceProgress = Math.floor(playerPos.x / 1000)
+    
+    let availableTypes = ['slime']
+    if (distanceProgress >= 2) availableTypes.push('bat')
+    if (distanceProgress >= 5) availableTypes.push('skeleton')
+    if (distanceProgress >= 10 && Math.random() < 0.1) availableTypes.push('golem')
+    
+    const typeKey = availableTypes[Math.floor(Math.random() * availableTypes.length)]
+    const type = ENEMY_TYPES[typeKey]
+    
+    const preferredLevel = type.preferredLevels[Math.floor(Math.random() * type.preferredLevels.length)]
+    const platformHeight = PLATFORM_LEVELS[preferredLevel]
+    
+    const spawnFromRight = Math.random() > 0.3
+    const spawnX = spawnFromRight ? scrollOffset + width + 100 : scrollOffset - 100
+    
+    let canSpawn = preferredLevel === 'ground'
+    if (!canSpawn) {
+      const nearbyPlatform = platforms.find(p => 
+        p.level === preferredLevel && 
+        Math.abs(p.worldX + p.width / 2 - spawnX) < 400
+      )
+      canSpawn = !!nearbyPlatform
+    }
+    
+    if (!canSpawn && preferredLevel !== 'ground') return
+    
+    const healthMultiplier = 1 + (distanceProgress * 0.2)
+    
+    const id = generateId()
+    const newEnemy = {
+      id,
+      type: typeKey,
+      ...type,
+      health: Math.floor(type.baseHealth * healthMultiplier),
+      maxHealth: Math.floor(type.baseHealth * healthMultiplier),
+      worldX: spawnX,
+      platformHeight,
+      platformLevel: preferredLevel,
+      hit: false,
+      dying: false,
+      patrolDirection: spawnFromRight ? -1 : 1,
+      isPatrolling: preferredLevel !== 'ground',
+    }
+    
+    setEnemies(prev => [...prev, newEnemy])
+  }, [playerPos.x, platforms, scrollOffset, width])
+  
+  // Attack enemy
+  const attackEnemy = useCallback(() => {
+    setEnemies(prev => {
+      const inRange = prev.filter(e => {
+        if (e.dying) return false
+        
+        const horizontalDist = facingRight 
+          ? e.worldX - playerPos.x
+          : playerPos.x - e.worldX
+        
+        if (horizontalDist > ATTACK_RANGE || horizontalDist < -50) return false
+        
+        const verticalDist = Math.abs(e.platformHeight - playerPos.y)
+        if (verticalDist > 50) return false
+        
+        return true
+      })
+      
+      if (inRange.length === 0) return prev
+      
+      inRange.sort((a, b) => Math.abs(a.worldX - playerPos.x) - Math.abs(b.worldX - playerPos.x))
+      const target = inRange[0]
+      
+      const isCrit = Math.random() < character.critChance
+      const damage = Math.floor(character.baseDamage * (isCrit ? character.critMultiplier : 1))
+      
+      setIsAttacking(true)
+      setTimeout(() => setIsAttacking(false), 300)
+      
+      const dmgId = generateId()
+      setDamageNumbers(prev => [...prev, {
+        id: dmgId,
+        value: damage,
+        worldX: target.worldX,
+        y: target.platformHeight + (target.height || 60),
+        isCrit,
+        startTime: Date.now(),
+      }])
+      
+      return prev.map(enemy => {
+        if (enemy.id !== target.id) return enemy
+        
+        const newHealth = enemy.health - damage
+        
+        if (newHealth <= 0) {
+          setTimeout(() => {
+            const goldId = generateId()
+            setGoldPickups(prev => [...prev, {
+              id: goldId,
+              value: enemy.goldReward,
+              worldX: enemy.worldX,
+              y: enemy.platformHeight + 50,
+              startTime: Date.now(),
+            }])
+            
+            setCharacter(prev => {
+              let newXp = prev.xp + enemy.xpReward
+              let newLevel = prev.level
+              let newXpToNext = prev.xpToNext
+              let newMaxHealth = prev.maxHealth
+              let newBaseDamage = prev.baseDamage
+              
+              while (newXp >= newXpToNext) {
+                newXp -= newXpToNext
+                newLevel++
+                newXpToNext = xpForLevel(newLevel)
+                newMaxHealth = Math.floor(100 * Math.pow(1.1, newLevel - 1))
+                newBaseDamage = Math.floor(10 * Math.pow(1.08, newLevel - 1))
+              }
+              
+              return {
+                ...prev,
+                xp: newXp,
+                level: newLevel,
+                xpToNext: newXpToNext,
+                maxHealth: newMaxHealth,
+                health: newLevel > prev.level ? newMaxHealth : prev.health,
+                baseDamage: newBaseDamage,
+                gold: prev.gold + enemy.goldReward,
+              }
+            })
+            
+            onKill?.()
+            
+            setTimeout(() => {
+              setEnemies(prev => prev.filter(e => e.id !== enemy.id))
+            }, 500)
+          }, 200)
+          
+          return { ...enemy, health: 0, hit: true, dying: true }
+        }
+        
+        return { ...enemy, health: newHealth, hit: true }
+      })
+    })
+  }, [character.baseDamage, character.critChance, character.critMultiplier, playerPos, facingRight, onKill])
+  
+  // Convert world to screen coordinates
+  const worldToScreen = useCallback((worldX, worldY) => ({
+    x: worldX - scrollOffset,
+    y: height - 100 - worldY,
+  }), [scrollOffset, height])
+  
+  // Main game loop
+  const gameUpdate = useCallback((delta) => {
+    const physics = physicsRef.current
+    if (!physics) return
+    
+    const now = Date.now()
+    
+    // Generate world
+    generatePlatformsAndLadders(playerPos.x + width)
+    
+    // Check nearby ladder
+    const ladder = physics.getNearbyLadder(playerPos.x, playerPos.y)
+    setNearbyLadder(ladder)
+    
+    // Handle movement
+    let moving = false
+    const isGrounded = physics.isPlayerGrounded()
+    
+    // Handle jumping
+    if (jumpCooldownRef.current > 0) {
+      jumpCooldownRef.current -= delta
+    }
+    
+    if (keysPressed.current.jump && jumpCooldownRef.current <= 0) {
+      if (isClimbing) {
+        // Jump off ladder
+        setIsClimbing(false)
+        physics.setPlayerClimbing(false)
+        physics.jumpPlayer(JUMP_FORCE * 0.8) // Slightly weaker jump from ladder
+        jumpCooldownRef.current = 200 // Cooldown to prevent double-jump
+      } else if (isGrounded) {
+        // Normal jump from ground
+        physics.jumpPlayer(JUMP_FORCE)
+        jumpCooldownRef.current = 200
+      }
+    }
+    
+    // Horizontal movement (allowed while climbing if you want to dismount)
+    if (keysPressed.current.left) {
+      if (isClimbing && ladder) {
+        // Dismount ladder to the left
+        setIsClimbing(false)
+        physics.setPlayerClimbing(false)
+      }
+      physics.movePlayer(-MOVE_SPEED * delta / 1000, 0)
+      setFacingRight(false)
+      moving = true
+    }
+    if (keysPressed.current.right) {
+      if (isClimbing && ladder) {
+        // Dismount ladder to the right
+        setIsClimbing(false)
+        physics.setPlayerClimbing(false)
+      }
+      physics.movePlayer(MOVE_SPEED * delta / 1000, 0)
+      setFacingRight(true)
+      moving = true
+    }
+    
+    // Climbing
+    if ((keysPressed.current.up || keysPressed.current.down) && !keysPressed.current.jump) {
+      if (ladder && !physics.isPlayerJumping()) {
+        if (!isClimbing) {
+          setIsClimbing(true)
+          physics.setPlayerClimbing(true)
+        }
+        
+        if (keysPressed.current.up) {
+          const newY = Math.min(ladder.topHeight, playerPos.y + (CLIMB_SPEED * delta) / 1000)
+          physics.climbPlayer((newY - playerPos.y))
+          moving = true
+        } else if (keysPressed.current.down) {
+          const newY = Math.max(ladder.bottomHeight, playerPos.y - (CLIMB_SPEED * delta) / 1000)
+          physics.climbPlayer((newY - playerPos.y))
+          moving = true
+        }
+      }
+    } else if (!keysPressed.current.up && !keysPressed.current.down && isClimbing && !keysPressed.current.left && !keysPressed.current.right) {
+      // Keep climbing state if not pressing any direction
+    }
+    
+    // Update jumping/falling states
+    setIsJumping(physics.isPlayerJumping())
+    setIsFalling(physics.isPlayerFalling())
+    
+    // Reset climbing if landed on ground
+    if (isClimbing && isGrounded && !ladder) {
+      setIsClimbing(false)
+      physics.setPlayerClimbing(false)
+    }
+    
+    setIsMoving(moving)
+    
+    // Update physics
+    physics.update(delta)
+    physics.updateGroundPosition(playerPos.x)
+    
+    // Get player position from physics
+    const pos = physics.getPlayerPosition()
+    setPlayerPos({ x: pos.x, y: Math.max(0, pos.y) })
+    
+    // Update enemies
+    setEnemies(prev => prev.map(enemy => {
+      if (enemy.dying) return enemy
+      
+      let newWorldX = enemy.worldX
+      
+      if (enemy.isPatrolling && enemy.platformLevel !== 'ground') {
+        const currentPlatform = platforms.find(p => 
+          p.level === enemy.platformLevel &&
+          enemy.worldX >= p.worldX - 20 &&
+          enemy.worldX <= p.worldX + p.width + 20
+        )
+        
+        if (currentPlatform) {
+          const moveSpeed = enemy.speed * 0.5
+          newWorldX = enemy.worldX + (enemy.patrolDirection * moveSpeed * delta) / 1000
+          
+          if (newWorldX < currentPlatform.worldX + 20) {
+            enemy.patrolDirection = 1
+            newWorldX = currentPlatform.worldX + 20
+          } else if (newWorldX > currentPlatform.worldX + currentPlatform.width - 60) {
+            enemy.patrolDirection = -1
+            newWorldX = currentPlatform.worldX + currentPlatform.width - 60
+          }
+        }
+      } else {
+        const dirToPlayer = playerPos.x > enemy.worldX ? 1 : -1
+        newWorldX = enemy.worldX + (dirToPlayer * enemy.speed * delta) / 1000
+        enemy.patrolDirection = dirToPlayer
+      }
+      
+      return { ...enemy, worldX: newWorldX, hit: false }
+    }).filter(enemy => Math.abs(enemy.worldX - playerPos.x) < width * 2))
+    
+    // Spawn enemies
+    if (now - lastSpawnRef.current > ENEMY_SPAWN_RATE) {
+      lastSpawnRef.current = now
+      spawnEnemy()
+    }
+    
+    // Auto attack
+    if (now - lastAttackRef.current > character.attackSpeed) {
+      lastAttackRef.current = now
+      attackEnemy()
+    }
+    
+    // Update damage numbers
+    setDamageNumbers(prev => prev.filter(d => now - d.startTime < 1000))
+    setGoldPickups(prev => prev.filter(g => now - g.startTime < 800))
+    
+    // Update graphics
+    if (terrainRef.current) {
+      drawTerrain(terrainRef.current, width, height, scrollOffset, currentBiome)
+    }
+    if (particlesRef.current) {
+      drawParticles(particlesRef.current, width, height, scrollOffset, currentBiome)
+    }
+    if (characterRef.current) {
+      drawCharacter(characterRef.current, isAttacking, isClimbing, isMoving, isJumping, isFalling)
+    }
+    
+  }, [playerPos, isClimbing, isMoving, isAttacking, isJumping, isFalling, platforms, generatePlatformsAndLadders, spawnEnemy, attackEnemy, character.attackSpeed, width, height, scrollOffset, currentBiome])
+  
+  useGameLoop(gameUpdate)
+  
+  const playerScreen = worldToScreen(playerPos.x, playerPos.y)
+  
+  return (
+    <>
+      {/* Terrain background */}
+      <pixiGraphics ref={terrainRef} />
+      
+      {/* Ambient particles */}
+      <pixiGraphics ref={particlesRef} />
+      
+      {/* Ladders */}
+      {ladders.map(ladder => {
+        const screenPos = worldToScreen(ladder.worldX, ladder.bottomHeight)
+        if (screenPos.x < -100 || screenPos.x > width + 100) return null
+        
+        return (
+          <pixiGraphics
+            key={`ladder-${ladder.id}`}
+            x={screenPos.x}
+            y={screenPos.y}
+            draw={(g) => drawLadder(g, ladder.topHeight - ladder.bottomHeight, biome.ladderStyle)}
+          />
+        )
+      })}
+      
+      {/* Platforms */}
+      {platforms.map(platform => {
+        const screenPos = worldToScreen(platform.worldX, platform.height)
+        if (screenPos.x < -300 || screenPos.x > width + 100) return null
+        
+        return (
+          <pixiGraphics
+            key={`platform-${platform.id}`}
+            x={screenPos.x}
+            y={screenPos.y}
+            draw={(g) => drawPlatform(g, platform.width, 20, biome.platformStyle)}
+          />
+        )
+      })}
+      
+      {/* Enemies */}
+      {enemies.map(enemy => {
+        const screenPos = worldToScreen(enemy.worldX, enemy.platformHeight)
+        if (screenPos.x < -100 || screenPos.x > width + 100) return null
+        
+        return (
+          <pixiContainer key={`enemy-${enemy.id}`} x={screenPos.x} y={screenPos.y} scale={{ x: enemy.patrolDirection === 1 ? 1 : -1, y: 1 }}>
+            <pixiGraphics draw={(g) => drawEnemy(g, enemy.type, enemy.hit, enemy.dying)} />
+            <pixiGraphics y={-ENEMY_TYPES[enemy.type].height - 15} scale={{ x: enemy.patrolDirection === 1 ? 1 : -1, y: 1 }} draw={(g) => drawHealthBar(g, enemy.health, enemy.maxHealth)} />
+          </pixiContainer>
+        )
+      })}
+      
+      {/* Player */}
+      <pixiGraphics
+        ref={characterRef}
+        x={playerScreen.x}
+        y={playerScreen.y}
+        scale={{ x: facingRight ? 1 : -1, y: 1 }}
+      />
+      
+      {/* Damage numbers */}
+      {damageNumbers.map(dmg => {
+        const screenPos = worldToScreen(dmg.worldX, dmg.y)
+        const age = (Date.now() - dmg.startTime) / 1000
+        const animatedY = screenPos.y - age * 50
+        
+        return (
+          <pixiText
+            key={`dmg-${dmg.id}`}
+            text={dmg.isCrit ? `${dmg.value}!` : `${dmg.value}`}
+            x={screenPos.x}
+            y={animatedY}
+            anchor={0.5}
+            alpha={Math.max(0, 1 - age)}
+            style={{
+              fill: dmg.isCrit ? 0xffdd44 : 0xffffff,
+              fontSize: dmg.isCrit ? 28 : 22,
+              fontWeight: 'bold',
+              stroke: { color: 0x000000, width: 4 },
+            }}
+          />
+        )
+      })}
+      
+      {/* Gold pickups */}
+      {goldPickups.map(gold => {
+        const screenPos = worldToScreen(gold.worldX, gold.y)
+        const age = (Date.now() - gold.startTime) / 800
+        const animatedY = screenPos.y - age * 40
+        
+        return (
+          <pixiText
+            key={`gold-${gold.id}`}
+            text={`+${gold.value} 🪙`}
+            x={screenPos.x}
+            y={animatedY}
+            anchor={0.5}
+            alpha={Math.max(0, 1 - age)}
+            style={{
+              fill: 0xffd700,
+              fontSize: 18,
+              fontWeight: 'bold',
+              stroke: { color: 0x000000, width: 3 },
+            }}
+          />
+        )
+      })}
+      
+      {/* Climb indicator */}
+      {nearbyLadder && !isClimbing && (
+        <pixiText
+          text="↑↓ Climb"
+          x={playerScreen.x + (facingRight ? 30 : -30)}
+          y={playerScreen.y - 45}
+          anchor={0.5}
+          style={{
+            fill: 0xffff00,
+            fontSize: 14,
+            fontWeight: 'bold',
+            stroke: { color: 0x000000, width: 2 },
+          }}
+        />
+      )}
+      
+      {/* Jump indicator while climbing */}
+      {isClimbing && (
+        <pixiText
+          text="SPACE: Jump  ←→: Dismount"
+          x={playerScreen.x}
+          y={playerScreen.y - 50}
+          anchor={0.5}
+          style={{
+            fill: 0x88ffff,
+            fontSize: 12,
+            fontWeight: 'bold',
+            stroke: { color: 0x000000, width: 2 },
+          }}
+        />
+      )}
+    </>
+  )
+}
+
+// Main GameStage component
+export function GameStage({
+  width,
+  height,
+  onStatsUpdate,
+  onKill,
+  onDistanceUpdate,
+}) {
+  return (
+    <Application
+      width={width}
+      height={height}
+      backgroundColor={0x0a0a0f}
+      antialias={true}
+    >
+      <GameContent
+        width={width}
+        height={height}
+        onStatsUpdate={onStatsUpdate}
+        onKill={onKill}
+        onDistanceUpdate={onDistanceUpdate}
+      />
+    </Application>
+  )
+}
+
+export default GameStage

@@ -52,7 +52,43 @@ h1, h2, h3, h4 {
   width: 100vw;
   height: 100vh;
   overflow: hidden;
-  background: linear-gradient(180deg, #0d0d1a 0%, #1a0a1a 50%, #0a0a0f 100%);
+  background: #0a0a0f;
+}
+
+/* PixiJS Canvas */
+.game-container canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* Zone Indicator */
+.zone-indicator {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(10, 10, 20, 0.9);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 8px 20px;
+  backdrop-filter: blur(10px);
+  text-align: center;
+}
+
+.zone-name {
+  font-family: 'Cinzel', serif;
+  font-size: 18px;
+  color: var(--accent-azure);
+  text-shadow: 0 0 10px rgba(0, 212, 255, 0.4);
+}
+
+.zone-transition {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 4px;
 }
 
 /* Parallax Background Layers */
@@ -763,11 +799,54 @@ h1, h2, h3, h4 {
   backdrop-filter: blur(10px);
 }
 
+.upgrades-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
 .upgrades-title {
   font-size: 16px;
   color: var(--accent-gold);
-  margin-bottom: 12px;
+  margin: 0;
   text-align: center;
+  flex: 1;
+}
+
+.upgrades-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.upgrades-close:hover {
+  color: var(--accent-crimson);
+  background: rgba(220, 20, 60, 0.1);
+}
+
+.upgrades-toggle {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: rgba(10, 10, 20, 0.95);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 20px;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  transition: all 0.2s ease;
+}
+
+.upgrades-toggle:hover {
+  border-color: var(--accent-gold);
+  transform: scale(1.05);
 }
 
 .upgrade-button {
@@ -924,4 +1003,176 @@ h1, h2, h3, h4 {
 
 .auto-attack-indicator.active::before {
   content: '⚔️ ';
+}
+
+/* ===========================================
+   CLIMBING SYSTEM
+   =========================================== */
+
+/* Character climbing state */
+.character.climbing .character-legs .leg {
+  animation: climb-legs 0.3s ease-in-out infinite alternate;
+}
+
+.character.climbing .character-legs .leg:nth-child(2) {
+  animation-delay: -0.15s;
+}
+
+@keyframes climb-legs {
+  0% { transform: translateY(0) rotate(-10deg); }
+  100% { transform: translateY(-8px) rotate(10deg); }
+}
+
+.character.climbing .character-body {
+  animation: climb-body 0.3s ease-in-out infinite alternate;
+}
+
+@keyframes climb-body {
+  0% { transform: translateX(-50%) rotate(-2deg); }
+  100% { transform: translateX(-50%) rotate(2deg); }
+}
+
+.character.climbing .character-sword {
+  transform: rotate(-30deg);
+  opacity: 0.7;
+}
+
+/* Climb indicator */
+.climb-indicator {
+  position: absolute;
+  top: -30px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 16px;
+  font-weight: bold;
+  color: var(--accent-gold);
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
+  animation: climb-indicator-pulse 0.8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes climb-indicator-pulse {
+  0%, 100% { 
+    opacity: 0.7;
+    transform: translateX(-50%) scale(1);
+  }
+  50% { 
+    opacity: 1;
+    transform: translateX(-50%) scale(1.1);
+  }
+}
+
+/* Controls hint */
+.controls-hint {
+  position: absolute;
+  bottom: 60px;
+  right: 20px;
+  background: rgba(10, 10, 20, 0.8);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 8px 14px;
+  backdrop-filter: blur(10px);
+}
+
+.hint-text {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-family: 'Rajdhani', sans-serif;
+  line-height: 1.4;
+}
+
+/* Character moving animation */
+.character.moving .character-legs .leg {
+  animation: walk 0.2s ease-in-out infinite alternate;
+}
+
+.character.moving .character-legs .leg:nth-child(2) {
+  animation-delay: -0.1s;
+}
+
+/* Character transform origin for flipping */
+.character {
+  transform-origin: center bottom;
+}
+
+/* Fix sword position when flipped */
+.character .character-sword {
+  transform-origin: bottom center;
+}
+
+/* ===========================================
+   ENEMY PATROLLING
+   =========================================== */
+
+.enemy.patrolling .enemy-sprite {
+  animation: patrol-bob 0.8s ease-in-out infinite;
+}
+
+@keyframes patrol-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+/* Platform enemy shadow */
+.enemy.patrolling::after {
+  content: '';
+  position: absolute;
+  bottom: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 8px;
+  background: radial-gradient(ellipse, rgba(0, 0, 0, 0.4) 0%, transparent 70%);
+  border-radius: 50%;
+}
+
+/* ===========================================
+   MULTI-LEVEL GAME WORLD
+   =========================================== */
+
+.game-world {
+  position: absolute;
+  bottom: 100px;
+  left: 0;
+  width: 100%;
+  height: calc(100% - 100px);
+  pointer-events: none;
+}
+
+/* Character positioned by Y */
+.character {
+  position: absolute;
+  left: 15%;
+  width: 80px;
+  height: 120px;
+  transform-origin: bottom center;
+  z-index: 10;
+  transition: bottom 0.05s linear;
+}
+
+/* Enemy positioned by platform height */
+.enemy {
+  position: absolute;
+  transition: left 0.05s linear, bottom 0.05s linear;
+  z-index: 5;
+}
+
+/* Better bat positioning for flying */
+.enemy-bat {
+  animation: bat-hover 1.5s ease-in-out infinite;
+}
+
+@keyframes bat-hover {
+  0%, 100% { transform: translateY(0) scaleX(var(--scale-x, 1)); }
+  50% { transform: translateY(-15px) scaleX(var(--scale-x, 1)); }
+}
+
+/* Damage numbers follow platform height */
+.damage-number {
+  z-index: 100;
+}
+
+/* Gold pickups on platforms */
+.gold-pickup {
+  z-index: 100;
 }

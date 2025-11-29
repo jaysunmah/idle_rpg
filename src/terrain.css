@@ -1,0 +1,1935 @@
+/* ===========================================
+   AUTO-GENERATIVE TERRAIN SYSTEM
+   =========================================== */
+
+/* Terrain System Container */
+.terrain-system {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* Dynamic Sky */
+.terrain-sky {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  transition: background 2s ease;
+}
+
+/* Fog Layer */
+.terrain-fog {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  transition: background-color 2s ease;
+}
+
+/* ===========================================
+   AMBIENT PARTICLES
+   =========================================== */
+
+.ambient-particles {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.ambient-particle {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* Fireflies */
+.ambient-particle.fireflies {
+  background: radial-gradient(circle, #ffff00 0%, rgba(255, 255, 0, 0) 70%);
+  animation: firefly-float 8s ease-in-out infinite;
+  box-shadow: 0 0 10px #ffff00, 0 0 20px rgba(255, 255, 0, 0.5);
+}
+
+@keyframes firefly-float {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.3;
+  }
+  25% {
+    transform: translate(30px, -20px) scale(1.2);
+    opacity: 1;
+  }
+  50% {
+    transform: translate(-20px, -40px) scale(0.8);
+    opacity: 0.5;
+  }
+  75% {
+    transform: translate(10px, -10px) scale(1.1);
+    opacity: 0.8;
+  }
+}
+
+/* Sparkles */
+.ambient-particle.sparkles {
+  background: radial-gradient(circle, #ffffff 0%, rgba(168, 85, 247, 0) 70%);
+  animation: sparkle-twinkle 3s ease-in-out infinite;
+  box-shadow: 0 0 8px #a855f7, 0 0 15px rgba(168, 85, 247, 0.5);
+}
+
+@keyframes sparkle-twinkle {
+  0%, 100% {
+    transform: scale(0.5);
+    opacity: 0.2;
+  }
+  50% {
+    transform: scale(1.5);
+    opacity: 1;
+  }
+}
+
+/* Embers */
+.ambient-particle.embers {
+  background: radial-gradient(circle, #ff6600 0%, rgba(255, 0, 0, 0) 70%);
+  animation: ember-rise 6s ease-out infinite;
+  box-shadow: 0 0 8px #ff4400, 0 0 15px rgba(255, 100, 0, 0.5);
+}
+
+@keyframes ember-rise {
+  0% {
+    transform: translateY(100px) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-200px) scale(0.3);
+    opacity: 0;
+  }
+}
+
+/* Dust */
+.ambient-particle.dust {
+  background: radial-gradient(circle, #b8a060 0%, rgba(180, 160, 100, 0) 70%);
+  animation: dust-drift 10s linear infinite;
+  opacity: 0.4;
+}
+
+@keyframes dust-drift {
+  0% {
+    transform: translateX(-50px) translateY(0);
+  }
+  100% {
+    transform: translateX(100px) translateY(20px);
+  }
+}
+
+/* Snow */
+.ambient-particle.snow {
+  background: radial-gradient(circle, #ffffff 0%, rgba(255, 255, 255, 0) 70%);
+  animation: snow-fall 8s linear infinite;
+  box-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+}
+
+@keyframes snow-fall {
+  0% {
+    transform: translateY(-50px) translateX(0) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(100vh) translateX(30px) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+/* Shadows */
+.ambient-particle.shadows {
+  background: radial-gradient(circle, rgba(50, 0, 80, 0.8) 0%, transparent 70%);
+  animation: shadow-pulse 5s ease-in-out infinite;
+}
+
+@keyframes shadow-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.3;
+  }
+  50% {
+    transform: scale(2);
+    opacity: 0.6;
+  }
+}
+
+/* ===========================================
+   BIOME-SPECIFIC MOUNTAINS
+   =========================================== */
+
+.terrain-mountains-far,
+.terrain-mountains-near {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 200%;
+  will-change: transform;
+}
+
+.terrain-mountains-far {
+  height: 35%;
+}
+
+.terrain-mountains-near {
+  height: 25%;
+}
+
+/* Dark Forest Mountains */
+.terrain-mountains-far.darkForest {
+  background: 
+    linear-gradient(135deg, transparent 45%, #0a1a0a 45%, #0a1a0a 48%, transparent 48%),
+    linear-gradient(225deg, transparent 45%, #0a1a0a 45%, #0a1a0a 48%, transparent 48%),
+    linear-gradient(135deg, transparent 35%, #081508 35%, #081508 39%, transparent 39%),
+    linear-gradient(225deg, transparent 35%, #081508 35%, #081508 39%, transparent 39%);
+  background-size: 300px 100%, 300px 100%, 200px 100%, 200px 100%;
+  background-position: 0 100%, 150px 100%, 50px 100%, 200px 100%;
+}
+
+.terrain-mountains-near.darkForest {
+  background: 
+    linear-gradient(140deg, transparent 40%, #0d200d 40%, #0d200d 44%, transparent 44%),
+    linear-gradient(220deg, transparent 40%, #0d200d 40%, #0d200d 44%, transparent 44%);
+  background-size: 220px 100%, 220px 100%;
+  background-position: 0 100%, 110px 100%;
+}
+
+/* Crystal Cavern Mountains */
+.terrain-mountains-far.crystalCavern {
+  background: 
+    linear-gradient(125deg, transparent 50%, #1a1030 50%, #1a1030 52%, transparent 52%),
+    linear-gradient(235deg, transparent 50%, #1a1030 50%, #1a1030 52%, transparent 52%),
+    linear-gradient(140deg, transparent 40%, #150d28 40%, #150d28 43%, transparent 43%);
+  background-size: 250px 100%, 250px 100%, 180px 100%;
+  background-position: 0 100%, 125px 100%, 60px 100%;
+}
+
+.terrain-mountains-near.crystalCavern {
+  background: 
+    linear-gradient(120deg, transparent 45%, #251545 45%, #251545 48%, transparent 48%),
+    linear-gradient(240deg, transparent 45%, #251545 45%, #251545 48%, transparent 48%);
+  background-size: 200px 100%, 200px 100%;
+  background-position: 0 100%, 100px 100%;
+}
+
+/* Volcanic Waste Mountains */
+.terrain-mountains-far.volcanicWaste {
+  background: 
+    linear-gradient(130deg, transparent 42%, #2a0a0a 42%, #2a0a0a 46%, transparent 46%),
+    linear-gradient(230deg, transparent 42%, #2a0a0a 42%, #2a0a0a 46%, transparent 46%),
+    linear-gradient(145deg, transparent 35%, #1a0505 35%, #1a0505 39%, transparent 39%);
+  background-size: 280px 100%, 280px 100%, 200px 100%;
+  background-position: 0 100%, 140px 100%, 70px 100%;
+}
+
+.terrain-mountains-near.volcanicWaste {
+  background: 
+    linear-gradient(135deg, transparent 38%, #3a1010 38%, #3a1010 42%, transparent 42%),
+    linear-gradient(225deg, transparent 38%, #3a1010 38%, #3a1010 42%, transparent 42%);
+  background-size: 230px 100%, 230px 100%;
+  background-position: 0 100%, 115px 100%;
+}
+
+/* Ancient Ruins Mountains */
+.terrain-mountains-far.ancientRuins {
+  background: 
+    linear-gradient(132deg, transparent 44%, #2a2510 44%, #2a2510 47%, transparent 47%),
+    linear-gradient(228deg, transparent 44%, #2a2510 44%, #2a2510 47%, transparent 47%);
+  background-size: 300px 100%, 300px 100%;
+  background-position: 0 100%, 150px 100%;
+}
+
+.terrain-mountains-near.ancientRuins {
+  background: 
+    linear-gradient(138deg, transparent 40%, #3a3520 40%, #3a3520 43%, transparent 43%),
+    linear-gradient(222deg, transparent 40%, #3a3520 40%, #3a3520 43%, transparent 43%);
+  background-size: 250px 100%, 250px 100%;
+  background-position: 0 100%, 125px 100%;
+}
+
+/* Frozen Tundra Mountains */
+.terrain-mountains-far.frozenTundra {
+  background: 
+    linear-gradient(128deg, transparent 43%, #1a2a3a 43%, #1a2a3a 47%, transparent 47%),
+    linear-gradient(232deg, transparent 43%, #1a2a3a 43%, #1a2a3a 47%, transparent 47%),
+    linear-gradient(140deg, transparent 36%, #152535 36%, #152535 40%, transparent 40%);
+  background-size: 320px 100%, 320px 100%, 220px 100%;
+  background-position: 0 100%, 160px 100%, 80px 100%;
+}
+
+.terrain-mountains-near.frozenTundra {
+  background: 
+    linear-gradient(125deg, transparent 40%, #253545 40%, #253545 44%, transparent 44%),
+    linear-gradient(235deg, transparent 40%, #253545 40%, #253545 44%, transparent 44%);
+  background-size: 260px 100%, 260px 100%;
+  background-position: 0 100%, 130px 100%;
+}
+
+/* Shadow Realm Mountains */
+.terrain-mountains-far.shadowRealm {
+  background: 
+    linear-gradient(135deg, transparent 48%, #0a0515 48%, #0a0515 50%, transparent 50%),
+    linear-gradient(225deg, transparent 48%, #0a0515 48%, #0a0515 50%, transparent 50%);
+  background-size: 280px 100%, 280px 100%;
+  background-position: 0 100%, 140px 100%;
+}
+
+.terrain-mountains-near.shadowRealm {
+  background: 
+    linear-gradient(140deg, transparent 45%, #150a25 45%, #150a25 48%, transparent 48%),
+    linear-gradient(220deg, transparent 45%, #150a25 45%, #150a25 48%, transparent 48%);
+  background-size: 240px 100%, 240px 100%;
+  background-position: 0 100%, 120px 100%;
+}
+
+/* ===========================================
+   TERRAIN GROUND
+   =========================================== */
+
+.terrain-ground {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 120px;
+  transition: background 2s ease;
+}
+
+.terrain-ground-detail {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 200%;
+  height: 80px;
+  will-change: transform;
+}
+
+/* Ground details per biome */
+.terrain-ground-detail.darkForest {
+  background: 
+    repeating-linear-gradient(90deg, 
+      transparent 0px, transparent 60px,
+      rgba(0, 100, 0, 0.1) 60px, rgba(0, 100, 0, 0.1) 64px
+    ),
+    repeating-linear-gradient(90deg, 
+      transparent 0px, transparent 120px,
+      rgba(100, 80, 0, 0.08) 120px, rgba(100, 80, 0, 0.08) 124px
+    );
+}
+
+.terrain-ground-detail.crystalCavern {
+  background: 
+    repeating-linear-gradient(90deg, 
+      transparent 0px, transparent 80px,
+      rgba(168, 85, 247, 0.15) 80px, rgba(168, 85, 247, 0.15) 82px
+    ),
+    repeating-linear-gradient(90deg, 
+      transparent 0px, transparent 150px,
+      rgba(100, 200, 255, 0.1) 150px, rgba(100, 200, 255, 0.1) 152px
+    );
+}
+
+.terrain-ground-detail.volcanicWaste {
+  background: 
+    repeating-linear-gradient(90deg, 
+      transparent 0px, transparent 40px,
+      rgba(255, 100, 0, 0.12) 40px, rgba(255, 100, 0, 0.12) 44px
+    ),
+    repeating-linear-gradient(90deg, 
+      transparent 0px, transparent 100px,
+      rgba(255, 50, 0, 0.08) 100px, rgba(255, 50, 0, 0.08) 104px
+    );
+}
+
+.terrain-ground-detail.ancientRuins {
+  background: 
+    repeating-linear-gradient(90deg, 
+      transparent 0px, transparent 100px,
+      rgba(180, 160, 100, 0.1) 100px, rgba(180, 160, 100, 0.1) 104px
+    ),
+    repeating-linear-gradient(90deg, 
+      transparent 0px, transparent 200px,
+      rgba(200, 180, 120, 0.06) 200px, rgba(200, 180, 120, 0.06) 208px
+    );
+}
+
+.terrain-ground-detail.frozenTundra {
+  background: 
+    repeating-linear-gradient(90deg, 
+      transparent 0px, transparent 70px,
+      rgba(200, 230, 255, 0.15) 70px, rgba(200, 230, 255, 0.15) 74px
+    ),
+    repeating-linear-gradient(90deg, 
+      transparent 0px, transparent 140px,
+      rgba(150, 200, 255, 0.1) 140px, rgba(150, 200, 255, 0.1) 144px
+    );
+}
+
+.terrain-ground-detail.shadowRealm {
+  background: 
+    repeating-linear-gradient(90deg, 
+      transparent 0px, transparent 50px,
+      rgba(80, 0, 120, 0.2) 50px, rgba(80, 0, 120, 0.2) 52px
+    ),
+    repeating-linear-gradient(90deg, 
+      transparent 0px, transparent 120px,
+      rgba(150, 0, 200, 0.1) 120px, rgba(150, 0, 200, 0.1) 122px
+    );
+}
+
+/* ===========================================
+   TERRAIN FEATURES CONTAINER
+   =========================================== */
+
+.terrain-features {
+  position: absolute;
+  bottom: 100px;
+  left: 0;
+  width: 100%;
+  height: calc(100% - 100px);
+}
+
+.terrain-feature-wrapper {
+  position: absolute;
+  bottom: 0;
+  transform-origin: bottom center;
+  transition: opacity 0.3s ease;
+}
+
+.terrain-feature-wrapper.back {
+  filter: brightness(0.6) blur(1px);
+}
+
+.terrain-feature-wrapper.mid {
+  filter: brightness(0.8);
+}
+
+/* ===========================================
+   FOREST FEATURES
+   =========================================== */
+
+/* Dead Tree */
+.terrain-feature.dead-tree {
+  width: 60px;
+  height: 120px;
+  position: relative;
+}
+
+.terrain-feature.dead-tree .trunk {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 12px;
+  height: 80px;
+  background: linear-gradient(90deg, #2a1a10 0%, #4a3020 50%, #2a1a10 100%);
+  border-radius: 2px;
+}
+
+.terrain-feature.dead-tree .branch {
+  position: absolute;
+  width: 25px;
+  height: 6px;
+  background: linear-gradient(90deg, #3a2515 0%, #4a3520 100%);
+  border-radius: 3px;
+}
+
+.terrain-feature.dead-tree .branch.left {
+  bottom: 60px;
+  left: 5px;
+  transform: rotate(-30deg);
+}
+
+.terrain-feature.dead-tree .branch.right {
+  bottom: 45px;
+  right: 5px;
+  transform: rotate(25deg);
+}
+
+.terrain-feature.dead-tree[data-variant="1"] .trunk {
+  height: 90px;
+}
+
+.terrain-feature.dead-tree[data-variant="2"] .trunk {
+  height: 70px;
+  transform: translateX(-50%) rotate(5deg);
+}
+
+/* Pine Tree */
+.terrain-feature.pine-tree {
+  width: 50px;
+  height: 100px;
+  position: relative;
+}
+
+.terrain-feature.pine-tree .trunk {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 10px;
+  height: 30px;
+  background: linear-gradient(90deg, #3a2515 0%, #5a4025 50%, #3a2515 100%);
+}
+
+.terrain-feature.pine-tree .foliage {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 22px solid transparent;
+  border-right: 22px solid transparent;
+}
+
+.terrain-feature.pine-tree .foliage.layer-1 {
+  bottom: 70px;
+  border-bottom: 30px solid #1a3a1a;
+}
+
+.terrain-feature.pine-tree .foliage.layer-2 {
+  bottom: 45px;
+  border-bottom: 35px solid #153015;
+  border-left-width: 25px;
+  border-right-width: 25px;
+}
+
+.terrain-feature.pine-tree .foliage.layer-3 {
+  bottom: 20px;
+  border-bottom: 40px solid #102510;
+  border-left-width: 28px;
+  border-right-width: 28px;
+}
+
+/* Mushroom */
+.terrain-feature.mushroom {
+  width: 30px;
+  height: 40px;
+  position: relative;
+}
+
+.terrain-feature.mushroom .stem {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 8px;
+  height: 18px;
+  background: linear-gradient(90deg, #d0c0a0 0%, #e8dcc0 50%, #d0c0a0 100%);
+  border-radius: 0 0 4px 4px;
+}
+
+.terrain-feature.mushroom .cap {
+  position: absolute;
+  bottom: 15px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 26px;
+  height: 20px;
+  background: linear-gradient(180deg, #cc3333 0%, #aa2222 100%);
+  border-radius: 50% 50% 30% 30%;
+}
+
+.terrain-feature.mushroom .spots {
+  position: absolute;
+  bottom: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 10px;
+  background: 
+    radial-gradient(circle at 20% 50%, white 3px, transparent 3px),
+    radial-gradient(circle at 80% 50%, white 3px, transparent 3px),
+    radial-gradient(circle at 50% 30%, white 2px, transparent 2px);
+}
+
+.terrain-feature.mushroom[data-variant="1"] .cap {
+  background: linear-gradient(180deg, #8844aa 0%, #663388 100%);
+}
+
+.terrain-feature.mushroom[data-variant="2"] .cap {
+  background: linear-gradient(180deg, #44aa44 0%, #338833 100%);
+}
+
+.terrain-feature.mushroom[data-variant="3"] .cap {
+  background: linear-gradient(180deg, #ddaa33 0%, #bb8822 100%);
+}
+
+/* Stump */
+.terrain-feature.stump {
+  width: 35px;
+  height: 25px;
+  position: relative;
+}
+
+.terrain-feature.stump .stump-body {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 30px;
+  height: 22px;
+  background: linear-gradient(180deg, #5a4030 0%, #3a2515 100%);
+  border-radius: 4px 4px 0 0;
+}
+
+.terrain-feature.stump .rings {
+  position: absolute;
+  top: 3px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 24px;
+  height: 14px;
+  border: 2px solid #7a6050;
+  border-radius: 50%;
+  background: radial-gradient(circle, #8a7060 0%, #5a4030 100%);
+}
+
+/* Bush */
+.terrain-feature.bush {
+  width: 45px;
+  height: 30px;
+  position: relative;
+}
+
+.terrain-feature.bush .leaves {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 28px;
+  background: radial-gradient(ellipse at 50% 100%, #1a4a1a 0%, #0d2a0d 100%);
+  border-radius: 50% 50% 30% 30%;
+}
+
+.terrain-feature.bush[data-variant="1"] .leaves {
+  background: radial-gradient(ellipse at 50% 100%, #2a3a1a 0%, #152510 100%);
+}
+
+/* ===========================================
+   CRYSTAL FEATURES
+   =========================================== */
+
+/* Crystal */
+.terrain-feature.crystal {
+  width: 25px;
+  height: 60px;
+  position: relative;
+}
+
+.terrain-feature.crystal .crystal-shard {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  border-bottom: 55px solid;
+  border-bottom-color: var(--crystal-color, #8855ff);
+  filter: drop-shadow(0 0 10px var(--crystal-color, #8855ff));
+}
+
+.terrain-feature.crystal[data-hue] .crystal-shard {
+  border-bottom-color: hsl(var(--hue, 270), 70%, 60%);
+  filter: drop-shadow(0 0 10px hsl(var(--hue, 270), 70%, 60%));
+}
+
+.terrain-feature.crystal .crystal-glow {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 30px;
+  height: 30px;
+  background: radial-gradient(circle, rgba(136, 85, 255, 0.5) 0%, transparent 70%);
+  animation: crystal-pulse 2s ease-in-out infinite;
+}
+
+@keyframes crystal-pulse {
+  0%, 100% { transform: translateX(-50%) scale(1); opacity: 0.5; }
+  50% { transform: translateX(-50%) scale(1.3); opacity: 0.8; }
+}
+
+/* Crystal Cluster */
+.terrain-feature.crystal-cluster {
+  width: 80px;
+  height: 70px;
+  position: relative;
+}
+
+.terrain-feature.crystal-cluster .crystal-shard {
+  position: absolute;
+  bottom: 0;
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  filter: drop-shadow(0 0 8px #a855f7);
+}
+
+.terrain-feature.crystal-cluster .crystal-shard.main {
+  left: 50%;
+  transform: translateX(-50%);
+  border-left-width: 12px;
+  border-right-width: 12px;
+  border-bottom: 65px solid #a855f7;
+}
+
+.terrain-feature.crystal-cluster .crystal-shard.small.left {
+  left: 15px;
+  border-bottom: 40px solid #8844cc;
+  transform: rotate(-15deg);
+}
+
+.terrain-feature.crystal-cluster .crystal-shard.small.right {
+  right: 15px;
+  border-bottom: 45px solid #9955dd;
+  transform: rotate(10deg);
+}
+
+.terrain-feature.crystal-cluster .crystal-glow {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 40px;
+  background: radial-gradient(ellipse at 50% 100%, rgba(168, 85, 247, 0.4) 0%, transparent 70%);
+  animation: crystal-pulse 3s ease-in-out infinite;
+}
+
+/* Stalagmite */
+.terrain-feature.stalagmite {
+  width: 30px;
+  height: 50px;
+  position: relative;
+}
+
+.terrain-feature.stalagmite .rock-spike {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 12px solid transparent;
+  border-right: 12px solid transparent;
+  border-bottom: 45px solid #4a4055;
+}
+
+/* Glow Mushroom */
+.terrain-feature.glow-mushroom {
+  width: 25px;
+  height: 35px;
+  position: relative;
+}
+
+.terrain-feature.glow-mushroom .stem {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 6px;
+  height: 15px;
+  background: linear-gradient(90deg, #606080 0%, #8080a0 50%, #606080 100%);
+  border-radius: 0 0 3px 3px;
+}
+
+.terrain-feature.glow-mushroom .cap {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 16px;
+  background: linear-gradient(180deg, #00ff88 0%, #00aa55 100%);
+  border-radius: 50% 50% 30% 30%;
+  box-shadow: 0 0 15px #00ff88;
+}
+
+.terrain-feature.glow-mushroom .glow {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 30px;
+  height: 20px;
+  background: radial-gradient(circle, rgba(0, 255, 136, 0.4) 0%, transparent 70%);
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+/* Rock */
+.terrain-feature.rock {
+  width: 40px;
+  height: 25px;
+  position: relative;
+}
+
+.terrain-feature.rock .rock-body {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 35px;
+  height: 22px;
+  background: linear-gradient(135deg, #505060 0%, #404050 50%, #303040 100%);
+  border-radius: 40% 50% 45% 55%;
+}
+
+.terrain-feature.rock[data-variant="1"] .rock-body {
+  width: 28px;
+  height: 18px;
+}
+
+.terrain-feature.rock[data-variant="2"] .rock-body {
+  width: 42px;
+  height: 20px;
+  border-radius: 50% 40% 55% 45%;
+}
+
+/* ===========================================
+   VOLCANIC FEATURES
+   =========================================== */
+
+/* Lava Rock */
+.terrain-feature.lava-rock {
+  width: 50px;
+  height: 35px;
+  position: relative;
+}
+
+.terrain-feature.lava-rock .rock-body {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 45px;
+  height: 30px;
+  background: linear-gradient(135deg, #2a2020 0%, #1a1010 100%);
+  border-radius: 40% 50% 45% 55%;
+}
+
+.terrain-feature.lava-rock .lava-crack {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 4px;
+  background: linear-gradient(90deg, #ff4400 0%, #ff8800 50%, #ff4400 100%);
+  border-radius: 2px;
+  box-shadow: 0 0 10px #ff4400;
+}
+
+.terrain-feature.lava-rock .lava-glow {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 50px;
+  height: 20px;
+  background: radial-gradient(ellipse at 50% 100%, rgba(255, 68, 0, 0.3) 0%, transparent 70%);
+  animation: lava-glow-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes lava-glow-pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+/* Ember */
+.terrain-feature.ember {
+  width: 20px;
+  height: 20px;
+  position: relative;
+}
+
+.terrain-feature.ember .ember-core {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 8px;
+  height: 8px;
+  background: radial-gradient(circle, #ffaa00 0%, #ff4400 100%);
+  border-radius: 50%;
+  animation: ember-flicker 0.5s ease-in-out infinite;
+}
+
+.terrain-feature.ember .ember-glow {
+  position: absolute;
+  bottom: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 20px;
+  background: radial-gradient(circle, rgba(255, 100, 0, 0.5) 0%, transparent 70%);
+}
+
+@keyframes ember-flicker {
+  0%, 100% { transform: translateX(-50%) scale(1); }
+  50% { transform: translateX(-50%) scale(1.2); }
+}
+
+/* Obsidian */
+.terrain-feature.obsidian {
+  width: 45px;
+  height: 55px;
+  position: relative;
+}
+
+.terrain-feature.obsidian .obsidian-shard {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 18px solid transparent;
+  border-right: 18px solid transparent;
+  border-bottom: 50px solid #0a0510;
+}
+
+.terrain-feature.obsidian .obsidian-shine {
+  position: absolute;
+  bottom: 15px;
+  left: 50%;
+  transform: translateX(-50%) rotate(45deg);
+  width: 8px;
+  height: 20px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.3) 0%, transparent 100%);
+}
+
+/* Crater */
+.terrain-feature.crater {
+  width: 70px;
+  height: 20px;
+  position: relative;
+}
+
+.terrain-feature.crater .crater-rim {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 15px;
+  background: linear-gradient(180deg, #3a2020 0%, #1a0a0a 100%);
+  border-radius: 50%;
+}
+
+.terrain-feature.crater .crater-depth {
+  position: absolute;
+  bottom: 3px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 10px;
+  background: radial-gradient(ellipse, #ff4400 0%, #aa2200 50%, #1a0505 100%);
+  border-radius: 50%;
+  box-shadow: inset 0 -3px 10px rgba(0, 0, 0, 0.8);
+}
+
+.terrain-feature.crater .smoke {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 30px;
+  background: linear-gradient(180deg, transparent 0%, rgba(100, 80, 60, 0.3) 100%);
+  animation: smoke-rise 3s ease-out infinite;
+}
+
+@keyframes smoke-rise {
+  0% { 
+    transform: translateX(-50%) translateY(0) scale(1);
+    opacity: 0.5;
+  }
+  100% { 
+    transform: translateX(-50%) translateY(-30px) scale(1.5);
+    opacity: 0;
+  }
+}
+
+/* ===========================================
+   RUINS FEATURES
+   =========================================== */
+
+/* Pillar */
+.terrain-feature.pillar {
+  width: 35px;
+  height: 90px;
+  position: relative;
+}
+
+.terrain-feature.pillar .pillar-base {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 32px;
+  height: 10px;
+  background: linear-gradient(180deg, #8a8070 0%, #6a6050 100%);
+  border-radius: 2px;
+}
+
+.terrain-feature.pillar .pillar-body {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 22px;
+  height: 65px;
+  background: linear-gradient(90deg, #9a9080 0%, #b0a090 50%, #8a8070 100%);
+  border-radius: 2px;
+}
+
+.terrain-feature.pillar .pillar-capital {
+  position: absolute;
+  bottom: 75px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 30px;
+  height: 12px;
+  background: linear-gradient(180deg, #a0a090 0%, #808070 100%);
+  border-radius: 2px;
+}
+
+/* Broken Pillar */
+.terrain-feature.broken-pillar {
+  width: 40px;
+  height: 50px;
+  position: relative;
+}
+
+.terrain-feature.broken-pillar .pillar-base {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 32px;
+  height: 10px;
+  background: linear-gradient(180deg, #7a7060 0%, #5a5040 100%);
+  border-radius: 2px;
+}
+
+.terrain-feature.broken-pillar .pillar-body {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 22px;
+  height: 35px;
+  background: linear-gradient(90deg, #8a8070 0%, #a09080 50%, #7a7060 100%);
+  border-radius: 2px;
+  clip-path: polygon(0 0, 100% 0, 90% 100%, 10% 100%);
+}
+
+.terrain-feature.broken-pillar .debris {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 15px;
+  height: 12px;
+  background: #6a6050;
+  border-radius: 30% 50% 40% 60%;
+}
+
+/* Statue */
+.terrain-feature.statue {
+  width: 45px;
+  height: 75px;
+  position: relative;
+}
+
+.terrain-feature.statue .statue-base {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 12px;
+  background: linear-gradient(180deg, #6a6560 0%, #4a4540 100%);
+  border-radius: 2px;
+}
+
+.terrain-feature.statue .statue-body {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 25px;
+  height: 40px;
+  background: linear-gradient(90deg, #7a7570 0%, #9a9590 50%, #6a6560 100%);
+  border-radius: 5px 5px 0 0;
+}
+
+.terrain-feature.statue .statue-head {
+  position: absolute;
+  bottom: 50px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 18px;
+  height: 20px;
+  background: linear-gradient(180deg, #8a8580 0%, #7a7570 100%);
+  border-radius: 50% 50% 40% 40%;
+}
+
+/* Archway */
+.terrain-feature.archway {
+  width: 100px;
+  height: 85px;
+  position: relative;
+}
+
+.terrain-feature.archway .arch-pillar {
+  position: absolute;
+  bottom: 0;
+  width: 18px;
+  height: 70px;
+  background: linear-gradient(90deg, #8a8070 0%, #a09080 50%, #7a7060 100%);
+  border-radius: 2px;
+}
+
+.terrain-feature.archway .arch-pillar.left {
+  left: 10px;
+}
+
+.terrain-feature.archway .arch-pillar.right {
+  right: 10px;
+}
+
+.terrain-feature.archway .arch-top {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80px;
+  height: 25px;
+  border: 10px solid #9a9080;
+  border-bottom: none;
+  border-radius: 50px 50px 0 0;
+  background: transparent;
+}
+
+.terrain-feature.archway .arch-keystone {
+  position: absolute;
+  top: 5px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 14px;
+  height: 18px;
+  background: linear-gradient(180deg, #b0a090 0%, #8a8070 100%);
+  clip-path: polygon(20% 0, 80% 0, 100% 100%, 0 100%);
+}
+
+/* Rubble */
+.terrain-feature.rubble {
+  width: 55px;
+  height: 20px;
+  position: relative;
+}
+
+.terrain-feature.rubble .rubble-pieces {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: 
+    radial-gradient(ellipse at 20% 80%, #7a7060 0%, #7a7060 8px, transparent 8px),
+    radial-gradient(ellipse at 50% 70%, #8a8070 0%, #8a8070 10px, transparent 10px),
+    radial-gradient(ellipse at 75% 85%, #6a6050 0%, #6a6050 7px, transparent 7px),
+    radial-gradient(ellipse at 35% 60%, #9a9080 0%, #9a9080 6px, transparent 6px);
+}
+
+/* ===========================================
+   FROZEN FEATURES
+   =========================================== */
+
+/* Ice Spike */
+.terrain-feature.ice-spike {
+  width: 30px;
+  height: 65px;
+  position: relative;
+}
+
+.terrain-feature.ice-spike .ice-body {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 12px solid transparent;
+  border-right: 12px solid transparent;
+  border-bottom: 60px solid rgba(180, 220, 255, 0.7);
+  filter: drop-shadow(0 0 5px rgba(150, 200, 255, 0.5));
+}
+
+.terrain-feature.ice-spike .ice-shine {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%) rotate(-10deg);
+  width: 4px;
+  height: 25px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.8) 0%, transparent 100%);
+}
+
+/* Frozen Tree */
+.terrain-feature.frozen-tree {
+  width: 55px;
+  height: 95px;
+  position: relative;
+}
+
+.terrain-feature.frozen-tree .trunk {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 12px;
+  height: 50px;
+  background: linear-gradient(90deg, #4a5060 0%, #6a7080 50%, #4a5060 100%);
+}
+
+.terrain-feature.frozen-tree .branches {
+  position: absolute;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 45px;
+  height: 50px;
+  background: 
+    linear-gradient(135deg, transparent 45%, #5a6070 45%, #5a6070 48%, transparent 48%),
+    linear-gradient(225deg, transparent 45%, #5a6070 45%, #5a6070 48%, transparent 48%);
+  background-size: 100% 100%;
+}
+
+.terrain-feature.frozen-tree .ice-coating {
+  position: absolute;
+  bottom: 35px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 50px;
+  height: 55px;
+  background: radial-gradient(ellipse at 50% 70%, rgba(180, 220, 255, 0.3) 0%, transparent 70%);
+}
+
+.terrain-feature.frozen-tree .icicles {
+  position: absolute;
+  bottom: 35px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 15px;
+  background: 
+    linear-gradient(180deg, rgba(200, 230, 255, 0.7) 0%, transparent 100%);
+  clip-path: polygon(0 0, 10% 100%, 20% 0, 30% 100%, 40% 0, 50% 100%, 60% 0, 70% 100%, 80% 0, 90% 100%, 100% 0);
+}
+
+/* Snow Drift */
+.terrain-feature.snow-drift {
+  width: 60px;
+  height: 25px;
+  position: relative;
+}
+
+.terrain-feature.snow-drift .snow-body {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 55px;
+  height: 20px;
+  background: linear-gradient(180deg, #ffffff 0%, #e0e8f0 100%);
+  border-radius: 50% 50% 0 0;
+}
+
+.terrain-feature.snow-drift .snow-sparkle {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 10px;
+  background: 
+    radial-gradient(circle at 20% 50%, rgba(255, 255, 255, 0.9) 2px, transparent 2px),
+    radial-gradient(circle at 60% 30%, rgba(255, 255, 255, 0.9) 1px, transparent 1px),
+    radial-gradient(circle at 80% 70%, rgba(255, 255, 255, 0.9) 2px, transparent 2px);
+}
+
+/* Icicle */
+.terrain-feature.icicle {
+  width: 15px;
+  height: 45px;
+  position: relative;
+}
+
+.terrain-feature.icicle .icicle-body {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 40px solid rgba(200, 230, 255, 0.8);
+  filter: drop-shadow(0 0 3px rgba(150, 200, 255, 0.5));
+}
+
+/* Frozen Rock */
+.terrain-feature.frozen-rock {
+  width: 45px;
+  height: 30px;
+  position: relative;
+}
+
+.terrain-feature.frozen-rock .rock-body {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 25px;
+  background: linear-gradient(135deg, #5a6070 0%, #4a5060 100%);
+  border-radius: 40% 50% 45% 55%;
+}
+
+.terrain-feature.frozen-rock .frost-layer {
+  position: absolute;
+  bottom: 5px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 38px;
+  height: 18px;
+  background: linear-gradient(180deg, rgba(200, 230, 255, 0.4) 0%, transparent 100%);
+  border-radius: 40% 50% 45% 55%;
+}
+
+/* ===========================================
+   SHADOW REALM FEATURES
+   =========================================== */
+
+/* Void Crystal */
+.terrain-feature.void-crystal {
+  width: 40px;
+  height: 70px;
+  position: relative;
+}
+
+.terrain-feature.void-crystal .crystal-body {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 16px solid transparent;
+  border-right: 16px solid transparent;
+  border-bottom: 65px solid #1a0030;
+  filter: drop-shadow(0 0 10px #5000a0);
+}
+
+.terrain-feature.void-crystal .void-core {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 12px;
+  height: 12px;
+  background: radial-gradient(circle, #a000ff 0%, #5000a0 50%, transparent 70%);
+  border-radius: 50%;
+  animation: void-pulse 2s ease-in-out infinite;
+}
+
+.terrain-feature.void-crystal .dark-aura {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 50px;
+  height: 50px;
+  background: radial-gradient(circle, rgba(80, 0, 160, 0.4) 0%, transparent 70%);
+  animation: dark-aura-expand 3s ease-in-out infinite;
+}
+
+@keyframes void-pulse {
+  0%, 100% { transform: translateX(-50%) scale(1); opacity: 0.7; }
+  50% { transform: translateX(-50%) scale(1.3); opacity: 1; }
+}
+
+@keyframes dark-aura-expand {
+  0%, 100% { transform: translateX(-50%) scale(1); opacity: 0.3; }
+  50% { transform: translateX(-50%) scale(1.5); opacity: 0.6; }
+}
+
+/* Shadow Pillar */
+.terrain-feature.shadow-pillar {
+  width: 30px;
+  height: 100px;
+  position: relative;
+}
+
+.terrain-feature.shadow-pillar .pillar-body {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 95px;
+  background: linear-gradient(90deg, #0a0015 0%, #150025 50%, #0a0015 100%);
+  border-radius: 3px;
+}
+
+.terrain-feature.shadow-pillar .shadow-tendrils {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 30px;
+  background: 
+    radial-gradient(ellipse at 30% 100%, rgba(50, 0, 80, 0.5) 0%, transparent 50%),
+    radial-gradient(ellipse at 70% 100%, rgba(50, 0, 80, 0.5) 0%, transparent 50%);
+  animation: tendril-wave 4s ease-in-out infinite;
+}
+
+@keyframes tendril-wave {
+  0%, 100% { transform: translateX(-50%) scaleY(1); }
+  50% { transform: translateX(-50%) scaleY(1.3); }
+}
+
+/* Eye Statue */
+.terrain-feature.eye-statue {
+  width: 50px;
+  height: 65px;
+  position: relative;
+}
+
+.terrain-feature.eye-statue .statue-body {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 35px;
+  height: 55px;
+  background: linear-gradient(180deg, #1a0025 0%, #0a0015 100%);
+  border-radius: 5px 5px 0 0;
+  clip-path: polygon(10% 100%, 20% 0, 80% 0, 90% 100%);
+}
+
+.terrain-feature.eye-statue .eye {
+  position: absolute;
+  bottom: 35px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 12px;
+  background: #000;
+  border-radius: 50%;
+  border: 2px solid #5000a0;
+}
+
+.terrain-feature.eye-statue .eye::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 8px;
+  height: 8px;
+  background: radial-gradient(circle, #ff0040 0%, #a00030 100%);
+  border-radius: 50%;
+  animation: eye-look 4s ease-in-out infinite;
+}
+
+.terrain-feature.eye-statue .eye-glow {
+  position: absolute;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 30px;
+  height: 20px;
+  background: radial-gradient(ellipse, rgba(255, 0, 64, 0.3) 0%, transparent 70%);
+  animation: eye-glow-pulse 2s ease-in-out infinite;
+}
+
+@keyframes eye-look {
+  0%, 100% { transform: translate(-50%, -50%); }
+  25% { transform: translate(-30%, -50%); }
+  75% { transform: translate(-70%, -50%); }
+}
+
+@keyframes eye-glow-pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+/* Dark Portal */
+.terrain-feature.dark-portal {
+  width: 70px;
+  height: 80px;
+  position: relative;
+}
+
+.terrain-feature.dark-portal .portal-frame {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 50px;
+  height: 70px;
+  border: 6px solid #1a0030;
+  border-radius: 30px 30px 0 0;
+  box-shadow: 0 0 15px #5000a0, inset 0 0 10px rgba(80, 0, 160, 0.5);
+}
+
+.terrain-feature.dark-portal .portal-void {
+  position: absolute;
+  bottom: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 38px;
+  height: 58px;
+  background: radial-gradient(ellipse, #000 0%, #0a0020 50%, #1a0040 100%);
+  border-radius: 25px 25px 0 0;
+}
+
+.terrain-feature.dark-portal .portal-swirl {
+  position: absolute;
+  bottom: 15px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 30px;
+  height: 45px;
+  background: 
+    conic-gradient(from 0deg, transparent, rgba(160, 0, 255, 0.3), transparent, rgba(160, 0, 255, 0.3));
+  border-radius: 50%;
+  animation: portal-spin 4s linear infinite;
+}
+
+@keyframes portal-spin {
+  0% { transform: translateX(-50%) rotate(0deg); }
+  100% { transform: translateX(-50%) rotate(360deg); }
+}
+
+/* Shadow Tree */
+.terrain-feature.shadow-tree {
+  width: 60px;
+  height: 110px;
+  position: relative;
+}
+
+.terrain-feature.shadow-tree .trunk {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 14px;
+  height: 60px;
+  background: linear-gradient(90deg, #0a0015 0%, #150025 50%, #0a0015 100%);
+}
+
+.terrain-feature.shadow-tree .canopy {
+  position: absolute;
+  bottom: 50px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 55px;
+  height: 55px;
+  background: radial-gradient(ellipse at 50% 60%, #1a0030 0%, #0a0015 70%, transparent 100%);
+  border-radius: 50%;
+}
+
+.terrain-feature.shadow-tree .dripping-shadow {
+  position: absolute;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 50px;
+  height: 30px;
+  background: 
+    linear-gradient(180deg, rgba(26, 0, 48, 0.8) 0%, transparent 100%);
+  clip-path: polygon(0 0, 15% 100%, 30% 0, 45% 100%, 60% 0, 75% 100%, 90% 0, 100% 50%, 100% 0);
+  animation: shadow-drip 3s ease-in-out infinite;
+}
+
+@keyframes shadow-drip {
+  0%, 100% { transform: translateX(-50%) scaleY(1); opacity: 0.7; }
+  50% { transform: translateX(-50%) scaleY(1.2); opacity: 0.9; }
+}
+
+/* ===========================================
+   ZONE INDICATOR
+   =========================================== */
+
+.zone-indicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  pointer-events: none;
+  z-index: 100;
+}
+
+.zone-name {
+  font-family: 'Cinzel', serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.3);
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  text-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
+}
+
+.zone-transition {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 11px;
+  color: rgba(168, 85, 247, 0.5);
+  margin-top: 4px;
+  animation: zone-fade 2s ease-in-out infinite;
+}
+
+@keyframes zone-fade {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.7; }
+}
+
+/* ===========================================
+   PLATFORMS
+   =========================================== */
+
+.platforms-container {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.platform {
+  position: absolute;
+  height: 20px;
+}
+
+.platform-surface {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 16px;
+  border-radius: 4px 4px 0 0;
+}
+
+.platform-edge {
+  position: absolute;
+  top: 0;
+  width: 8px;
+  height: 20px;
+}
+
+.platform-edge.left {
+  left: -4px;
+  border-radius: 4px 0 0 4px;
+}
+
+.platform-edge.right {
+  right: -4px;
+  border-radius: 0 4px 4px 0;
+}
+
+.platform-supports {
+  position: absolute;
+  bottom: -40px;
+  left: 0;
+  width: 100%;
+  height: 40px;
+}
+
+.platform-supports .support {
+  position: absolute;
+  bottom: 0;
+  width: 12px;
+  height: 100%;
+}
+
+.platform-supports .support.left {
+  left: 15%;
+}
+
+.platform-supports .support.right {
+  right: 15%;
+}
+
+/* Wood Platform Style (Dark Forest) */
+.platform-wood .platform-surface {
+  background: linear-gradient(180deg, #5a4030 0%, #3a2515 100%);
+  box-shadow: 
+    inset 0 2px 0 rgba(255, 255, 255, 0.1),
+    0 4px 8px rgba(0, 0, 0, 0.4);
+}
+
+.platform-wood .platform-surface::before {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 10%;
+  width: 80%;
+  height: 2px;
+  background: repeating-linear-gradient(90deg, 
+    transparent 0px, transparent 20px,
+    rgba(0, 0, 0, 0.2) 20px, rgba(0, 0, 0, 0.2) 22px
+  );
+}
+
+.platform-wood .platform-edge {
+  background: linear-gradient(180deg, #4a3020 0%, #2a1a10 100%);
+}
+
+.platform-wood .platform-supports .support {
+  background: linear-gradient(90deg, #3a2515 0%, #4a3020 50%, #3a2515 100%);
+  border-radius: 2px;
+}
+
+/* Crystal Platform Style */
+.platform-crystal .platform-surface {
+  background: linear-gradient(180deg, rgba(168, 85, 247, 0.7) 0%, rgba(100, 50, 180, 0.8) 100%);
+  box-shadow: 
+    inset 0 2px 0 rgba(255, 255, 255, 0.3),
+    0 0 20px rgba(168, 85, 247, 0.5),
+    0 4px 8px rgba(0, 0, 0, 0.4);
+}
+
+.platform-crystal .platform-edge {
+  background: linear-gradient(180deg, rgba(140, 70, 200, 0.8) 0%, rgba(80, 40, 140, 0.9) 100%);
+}
+
+.platform-crystal .platform-supports .support {
+  background: linear-gradient(90deg, 
+    rgba(100, 50, 180, 0.6) 0%, 
+    rgba(168, 85, 247, 0.7) 50%, 
+    rgba(100, 50, 180, 0.6) 100%
+  );
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.4);
+}
+
+/* Stone Platform Style (Volcanic / Ruins) */
+.platform-stone .platform-surface {
+  background: linear-gradient(180deg, #5a5050 0%, #3a3030 100%);
+  box-shadow: 
+    inset 0 2px 0 rgba(255, 255, 255, 0.1),
+    0 4px 8px rgba(0, 0, 0, 0.5);
+}
+
+.platform-stone .platform-edge {
+  background: linear-gradient(180deg, #4a4040 0%, #2a2020 100%);
+}
+
+.platform-stone .platform-supports .support {
+  background: linear-gradient(90deg, #3a3030 0%, #4a4040 50%, #3a3030 100%);
+  border-radius: 2px;
+}
+
+/* Ice Platform Style */
+.platform-ice .platform-surface {
+  background: linear-gradient(180deg, rgba(180, 220, 255, 0.8) 0%, rgba(120, 180, 220, 0.9) 100%);
+  box-shadow: 
+    inset 0 2px 0 rgba(255, 255, 255, 0.5),
+    0 0 15px rgba(150, 200, 255, 0.4),
+    0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.platform-ice .platform-edge {
+  background: linear-gradient(180deg, rgba(150, 200, 240, 0.8) 0%, rgba(100, 160, 200, 0.9) 100%);
+}
+
+.platform-ice .platform-supports .support {
+  background: linear-gradient(90deg, 
+    rgba(120, 180, 220, 0.6) 0%, 
+    rgba(180, 220, 255, 0.7) 50%, 
+    rgba(120, 180, 220, 0.6) 100%
+  );
+}
+
+/* Shadow Platform Style */
+.platform-shadow .platform-surface {
+  background: linear-gradient(180deg, #1a0030 0%, #0a0015 100%);
+  box-shadow: 
+    inset 0 2px 0 rgba(160, 0, 255, 0.2),
+    0 0 20px rgba(80, 0, 160, 0.5),
+    0 4px 8px rgba(0, 0, 0, 0.6);
+}
+
+.platform-shadow .platform-edge {
+  background: linear-gradient(180deg, #150025 0%, #050010 100%);
+}
+
+.platform-shadow .platform-supports .support {
+  background: linear-gradient(90deg, #0a0015 0%, #150025 50%, #0a0015 100%);
+  box-shadow: 0 0 10px rgba(80, 0, 160, 0.3);
+}
+
+/* ===========================================
+   LADDERS / ROPES
+   =========================================== */
+
+.ladders-container {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.ladder {
+  position: absolute;
+  width: 30px;
+}
+
+.ladder-rail {
+  position: absolute;
+  top: 0;
+  width: 6px;
+  height: 100%;
+  border-radius: 3px;
+}
+
+.ladder-rail.left {
+  left: 0;
+}
+
+.ladder-rail.right {
+  right: 0;
+}
+
+.ladder-rungs {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.ladder-rungs .rung {
+  position: absolute;
+  left: 4px;
+  width: 22px;
+  height: 6px;
+  border-radius: 2px;
+}
+
+/* Vine Ladder Style (Dark Forest) */
+.ladder-vine .ladder-rail {
+  background: linear-gradient(90deg, #2a5020 0%, #3a7030 50%, #2a5020 100%);
+  box-shadow: 0 0 5px rgba(50, 150, 50, 0.3);
+}
+
+.ladder-vine .ladder-rail::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: repeating-linear-gradient(180deg,
+    transparent 0px, transparent 15px,
+    rgba(100, 200, 100, 0.2) 15px, rgba(100, 200, 100, 0.2) 20px
+  );
+}
+
+.ladder-vine .ladder-rungs .rung {
+  background: linear-gradient(180deg, #4a3020 0%, #3a2515 100%);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Chain Ladder Style (Crystal / Volcanic / Shadow) */
+.ladder-chain .ladder-rail {
+  background: linear-gradient(90deg, #404050 0%, #606070 50%, #404050 100%);
+  box-shadow: 0 0 5px rgba(100, 100, 120, 0.4);
+}
+
+.ladder-chain .ladder-rail::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 1px;
+  width: 4px;
+  height: 100%;
+  background: repeating-linear-gradient(180deg,
+    rgba(255, 255, 255, 0.2) 0px, rgba(255, 255, 255, 0.2) 8px,
+    transparent 8px, transparent 16px
+  );
+}
+
+.ladder-chain .ladder-rungs .rung {
+  background: linear-gradient(180deg, #505060 0%, #404050 100%);
+  box-shadow: 
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+/* Rope Ladder Style (Ruins / Tundra) */
+.ladder-rope .ladder-rail {
+  background: linear-gradient(90deg, #6a5040 0%, #8a7060 50%, #6a5040 100%);
+  border-radius: 4px;
+}
+
+.ladder-rope .ladder-rail::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: repeating-linear-gradient(180deg,
+    rgba(0, 0, 0, 0.1) 0px, rgba(0, 0, 0, 0.1) 4px,
+    transparent 4px, transparent 8px
+  );
+}
+
+.ladder-rope .ladder-rungs .rung {
+  background: linear-gradient(180deg, #5a4030 0%, #4a3020 100%);
+  border-radius: 3px;
+  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* Ladder hover highlight (when player is near) */
+.ladder.highlighted .ladder-rail {
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
+}
+
+.ladder.highlighted .ladder-rungs .rung {
+  box-shadow: 0 0 8px rgba(255, 215, 0, 0.4);
+}
