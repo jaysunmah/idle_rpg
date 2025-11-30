@@ -9,13 +9,13 @@ src/game/components/index.js: +1[8] -1[8]
 
 Conversations:
 
-[0]: 2670fc9e-8e39-4668-82e9-29891246dcb4; Revise README for frame output clarification; claude-4.5-opus-high-thinking;
-[1]: 552192d9-794c-4ffb-8f7f-4d21e5e07dee; Clean up process image script arguments; claude-4.5-opus-high-thinking;
+[0]: 2670fc9e-8e39-4668-82e9-29891246dcb4; 2670fc9e; unknown;
+[1]: 552192d9-794c-4ffb-8f7f-4d21e5e07dee; 552192d9; unknown;
 [2]: 90d0592f-e308-4572-a160-c666ad3ee4c8; 90d0592f; unknown;
 [3]: bf0923b8-d85d-4d34-9b08-bfc233ba8577; Tab Request bf0923b8; unknown;
 [4]: 978cb1c7-8cea-4207-9e50-18b60cdd74cc; Tab Request 978cb1c7; unknown;
 [5]: 3084b78c-247a-43e1-a530-227482144400; Tab Request 3084b78c; unknown;
-[6]: 4486fd1f-726e-4119-9dff-71b1f71d662c; Update image processing script for frame detection; claude-4.5-opus-high-thinking;
-[7]: 6fe43eda-dc52-4477-b5e0-752bba2d3483; Edit sprite parsing script for frames; gemini-3-pro;
-[8]: c0c216b2-61ac-4b34-a782-40d6ae871a44; Fix character size aspect ratio bug; claude-4.5-opus-high-thinking;
+[6]: 4486fd1f-726e-4119-9dff-71b1f71d662c; 4486fd1f; unknown;
+[7]: 6fe43eda-dc52-4477-b5e0-752bba2d3483; 6fe43eda; unknown;
+[8]: c0c216b2-61ac-4b34-a782-40d6ae871a44; c0c216b2; unknown;
 [9]: f780e6f5-31c1-440e-ac91-d813fdb8d14d; Implement customizable character sprites; gemini-3-pro;
