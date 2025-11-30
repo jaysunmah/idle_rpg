@@ -29,11 +29,14 @@ export class PhysicsEngine {
     this.bodies = new Map() // Track bodies by ID
     this.platforms = new Map()
     this.ladders = []
+    this.playerClimbing = false
     
     // Ground body (static, infinite width conceptually)
+    // Ground top surface should be at Matter.js y=0 (where player feet rest)
+    // With height 50, center needs to be at y=25 so top is at y=0
     this.ground = Matter.Bodies.rectangle(
       5000, // x position (will be updated)
-      -25, // y position (below 0)
+      25, // y position (center below surface, so top is at y=0)
       20000, // width
       50, // height
       {
@@ -122,8 +125,11 @@ export class PhysicsEngine {
   }
   
   // Create platform body
+  // The platform surface (where player stands) should be at game y coordinate
   createPlatform(id, x, y, width, height = 20) {
-    const body = Matter.Bodies.rectangle(x + width / 2, -y - height / 2, width, height, {
+    // Place body so that the TOP surface is at game y (Matter.js y = -y)
+    // Body center should be at y + height/2 below the surface
+    const body = Matter.Bodies.rectangle(x + width / 2, -y + height / 2, width, height, {
       isStatic: true,
       label: `platform_${id}`,
       friction: 0.8,
@@ -155,35 +161,52 @@ export class PhysicsEngine {
   }
   
   // Check if player is near a ladder
-  getNearbyLadder(playerX, playerY, tolerance = 40) {
+  getNearbyLadder(playerX, playerY, tolerance = 50) {
     return this.ladders.find(ladder => {
       const isNearX = Math.abs(ladder.worldX - playerX) < tolerance
-      const isInYRange = playerY >= ladder.bottomHeight - 10 && playerY <= ladder.topHeight + 10
+      // More forgiving Y range check:
+      // - Player can be slightly below the ladder bottom (to start climbing from ground/platform)
+      // - Player can be at or slightly above the ladder top (to climb down from platform)
+      // - Player height is ~60px, so we need to account for feet vs center position
+      const isInYRange = playerY >= ladder.bottomHeight - 30 && playerY <= ladder.topHeight + 50
       return isNearX && isInYRange
     })
   }
   
   // Check if body is grounded
   isGrounded(body) {
-    const bodyY = -body.position.y
+    // If climbing, never report as grounded (to prevent state conflicts)
+    if (this.playerClimbing) return false
+    
+    // Calculate game Y coordinate (same as getPlayerPosition)
+    const bodyHeight = body.bounds.max.y - body.bounds.min.y
+    const gameY = -body.position.y - bodyHeight / 2
     // Check if near ground level or on a platform
-    return bodyY <= 5 || this.isOnPlatform(body)
+    return gameY <= 5 || this.isOnPlatform(body)
   }
   
   isOnPlatform(body) {
-    const bodyY = -body.position.y
+    // Player feet position in game coords (y=0 is ground, positive is up)
+    // Player body center is at position.y, feet are at position.y + height/2 (in Matter.js)
+    // In game coords: feet at -(position.y + height/2) = -position.y - height/2
+    const bodyHeight = body.bounds.max.y - body.bounds.min.y
+    const playerFeetY = -body.bounds.max.y // bounds.max.y is bottom in Matter.js coords
     const bodyX = body.position.x
     const bodyWidth = body.bounds.max.x - body.bounds.min.x
     
     for (const [, platform] of this.platforms) {
-      const platY = -platform.position.y + (platform.bounds.max.y - platform.bounds.min.y) / 2
+      // Platform surface in game coords
+      // Platform top is at bounds.min.y in Matter.js (more negative = higher)
+      const platformSurfaceY = -platform.bounds.min.y
       const platLeft = platform.bounds.min.x
       const platRight = platform.bounds.max.x
       
-      const isAbovePlatform = bodyY >= platY - 10 && bodyY <= platY + 30
+      // Check if player feet are at or near the platform surface
+      // Allow some tolerance for landing detection
+      const isAtPlatformHeight = playerFeetY >= platformSurfaceY - 10 && playerFeetY <= platformSurfaceY + 20
       const isOverPlatform = bodyX + bodyWidth / 2 > platLeft && bodyX - bodyWidth / 2 < platRight
       
-      if (isAbovePlatform && isOverPlatform) return true
+      if (isAtPlatformHeight && isOverPlatform) return true
     }
     return false
   }
@@ -245,17 +268,20 @@ export class PhysicsEngine {
     return this.isGrounded(player)
   }
   
-  // Set player climbing mode (disable gravity)
+  // Set player climbing mode (disable physics)
   setPlayerClimbing(isClimbing) {
     const player = this.bodies.get('player')
     if (!player) return
     
     if (isClimbing) {
-      // Disable gravity effect while climbing
-      player.gravityScale = 0
+      // Make body static while climbing to prevent physics interference
+      Matter.Body.setStatic(player, true)
       Matter.Body.setVelocity(player, { x: 0, y: 0 })
+      this.playerClimbing = true
     } else {
-      player.gravityScale = 1
+      // Restore dynamic physics
+      Matter.Body.setStatic(player, false)
+      this.playerClimbing = false
     }
   }
   

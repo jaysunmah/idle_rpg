@@ -14,7 +14,7 @@ This package enables the AI assistant to test and deploy applications using GitH
 
 ### Example 1: Deploy to Vercel
 **User**: "Deploy this app to Vercel"
-**Assistant**: The assistant should use the `mcp_user-vercel_deploy_to_vercel` tool to deploy the current project. If the project doesn't exist yet, it should check for existing projects using `mcp_user-vercel_list_projects` and create a new deployment. The assistant should monitor the deployment status and provide the deployment URL to the user.
+**Assistant**: Before deploying, the assistant should FIRST commit any uncommitted changes and push them to GitHub. This ensures Vercel deploys the latest code. After confirming the changes are pushed, the assistant should use the `mcp_user-vercel_deploy_to_vercel` tool to deploy the current project. If the project doesn't exist yet, it should check for existing projects using `mcp_user-vercel_list_projects` and create a new deployment. The assistant should monitor the deployment status and provide the deployment URL to the user.
 
 ### Example 2: Create Pull Request
 **User**: "Create a PR for these changes"
@@ -36,6 +36,7 @@ This package enables the AI assistant to test and deploy applications using GitH
   - Reviewing pull requests and code
   - Managing Vercel projects and domains
 - **Tool usage**: The assistant should automatically use GitHub and Vercel MCP tools without asking for permission. Always use the appropriate MCP tool functions (prefixed with `mcp_user-github_` or `mcp_user-vercel_`) rather than suggesting manual steps.
+- **Pre-deployment requirement**: Before deploying to Vercel, ALWAYS commit and push any uncommitted changes to GitHub first. Vercel pulls from the GitHub repository, so local changes must be pushed before deployment.
 - **Limitations**: Requires proper authentication and access to GitHub and Vercel accounts. The assistant should verify access before attempting operations.
 
 ## Configuration

@@ -1,5 +1,5 @@
 import { Application, extend, useApplication } from '@pixi/react'
-import { Container, Graphics, Text } from 'pixi.js'
+import { Container, Graphics, Text, Sprite, Assets } from 'pixi.js'
 import { useRef, useState, useEffect, useCallback, useMemo } from 'react'
 import {
   BIOMES,
@@ -13,12 +13,14 @@ import {
   drawLadder,
   PLATFORM_STYLES,
   LADDER_STYLES,
+  Character,
+  Pet,
 } from './components'
 import { PhysicsEngine, PLATFORM_LEVELS } from './PhysicsEngine'
 import { useGameLoop } from './useGameLoop'
 
 // Extend PixiJS components for React
-extend({ Container, Graphics, Text })
+extend({ Container, Graphics, Text, Sprite })
 
 // Game constants
 const ATTACK_RANGE = 200
@@ -30,6 +32,10 @@ const JUMP_FORCE = 14
 const PLATFORM_CHUNK_SIZE = 400
 const PLATFORM_WIDTH_MIN = 150
 const PLATFORM_WIDTH_MAX = 300
+const ANIMATION_FRAME_DURATION = 100 // milliseconds per frame
+const PET_FOLLOW_DISTANCE = 60 // Base distance behind for first pet
+const PET_SPACING = 40 // Additional spacing between each pet
+const PET_FOLLOW_SPEED = 0.08 // How quickly pet catches up (lerp factor)
 
 // XP calculation
 const xpForLevel = (level) => Math.floor(100 * Math.pow(1.5, level - 1))
@@ -44,113 +50,8 @@ const seededRandom = (seed) => {
   return x - Math.floor(x)
 }
 
-// Character drawing function
-function drawCharacter(g, isAttacking, isClimbing, isMoving, isJumping, isFalling) {
-  g.clear()
-  
-  const attackOffset = isAttacking ? 5 : 0
-  const inAir = isJumping || isFalling
-  
-  // Legs
-  g.fill({ color: 0x4a3728 })
-  if (isJumping) {
-    // Jumping pose - legs tucked
-    g.rect(-10, 35, 8, 18)
-    g.rect(2, 38, 8, 15)
-  } else if (isFalling) {
-    // Falling pose - legs spread
-    g.rect(-12, 32, 8, 26)
-    g.rect(4, 32, 8, 26)
-  } else if (isMoving && !isClimbing) {
-    const time = Date.now() / 100
-    const legOffset = Math.sin(time) * 4
-    g.rect(-8, 35, 8, 25 + legOffset)
-    g.rect(0, 35, 8, 25 - legOffset)
-  } else if (isClimbing) {
-    const time = Date.now() / 200
-    const climbOffset = Math.sin(time) * 3
-    g.rect(-10, 30 + climbOffset, 8, 28)
-    g.rect(2, 38 - climbOffset, 8, 20)
-  } else {
-    g.rect(-8, 35, 8, 25)
-    g.rect(0, 35, 8, 25)
-  }
-  g.fill()
-  
-  // Body
-  const bodyTilt = isJumping ? -2 : (isFalling ? 2 : 0)
-  g.fill({ color: 0x5a6a7a })
-  g.roundRect(-15, 5 + bodyTilt, 30, 35, 4)
-  g.fill()
-  
-  // Body highlight
-  g.fill({ color: 0x6a7a8a })
-  g.roundRect(-12, 8 + bodyTilt, 24, 10, 2)
-  g.fill()
-  
-  // Head
-  g.fill({ color: 0xffdbac })
-  g.circle(0, -8 + bodyTilt, 12)
-  g.fill()
-  
-  // Helmet
-  g.fill({ color: 0x7a8a9a })
-  g.moveTo(-14, -5 + bodyTilt)
-  g.lineTo(-14, -15 + bodyTilt)
-  g.lineTo(0, -25 + bodyTilt)
-  g.lineTo(14, -15 + bodyTilt)
-  g.lineTo(14, -5 + bodyTilt)
-  g.closePath()
-  g.fill()
-  
-  // Helmet visor
-  g.fill({ color: 0x2a3a4a })
-  g.rect(-8, -12 + bodyTilt, 16, 6)
-  g.fill()
-  
-  // Eyes
-  g.fill({ color: 0xffffff })
-  g.circle(-4, -9 + bodyTilt, 2)
-  g.circle(4, -9 + bodyTilt, 2)
-  g.fill()
-  g.fill({ color: 0x000000 })
-  g.circle(-4, -9 + bodyTilt, 1)
-  g.circle(4, -9 + bodyTilt, 1)
-  g.fill()
-  
-  // Arms (adjusted for jumping/falling)
-  if (inAir && !isAttacking) {
-    // Arms raised during jump
-    g.fill({ color: 0x5a6a7a })
-    g.rect(-20, 8 + bodyTilt, 8, 20)
-    g.rect(12, 5 + bodyTilt, 8, 22)
-    g.fill()
-  }
-  
-  // Sword
-  const swordX = isAttacking ? 25 + attackOffset : (inAir ? 20 : 18)
-  const swordY = isAttacking ? -5 : (isJumping ? 0 : (isFalling ? 15 : 10))
-  
-  g.fill({ color: 0x4a3728 })
-  g.rect(swordX - 3, swordY + 15, 6, 12)
-  g.fill()
-  
-  g.fill({ color: 0xffd700 })
-  g.rect(swordX - 8, swordY + 12, 16, 4)
-  g.fill()
-  
-  g.fill({ color: isAttacking ? 0xffffff : 0xd0d0d0 })
-  g.moveTo(swordX - 4, swordY + 12)
-  g.lineTo(swordX + 4, swordY + 12)
-  g.lineTo(swordX + 3, swordY - 25)
-  g.lineTo(swordX, swordY - 30)
-  g.lineTo(swordX - 3, swordY - 25)
-  g.closePath()
-  g.fill()
-}
-
 // Game content component (inside Application)
-function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate }) {
+function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, selectedCharacter }) {
   const app = useApplication()
   
   // Physics engine
@@ -159,7 +60,6 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate })
   // Graphics refs
   const terrainRef = useRef(null)
   const particlesRef = useRef(null)
-  const characterRef = useRef(null)
   
   // Game state
   const [playerPos, setPlayerPos] = useState({ x: 200, y: 0 })
@@ -171,12 +71,70 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate })
   const [isFalling, setIsFalling] = useState(false)
   const [nearbyLadder, setNearbyLadder] = useState(null)
   
+  // Pets state - array of pet objects
+  const [pets, setPets] = useState([
+    {
+      id: 1,
+      type: 'doodle',
+      pos: { x: 200 - PET_FOLLOW_DISTANCE, y: 0 },
+      facingRight: true,
+      isMoving: false,
+      targetPos: { x: 200 - PET_FOLLOW_DISTANCE, y: 0 },
+      scale: 1,
+    },
+    {
+      id: 2,
+      type: 'cat',
+      pos: { x: 200 - PET_FOLLOW_DISTANCE - PET_SPACING, y: 0 },
+      facingRight: true,
+      isMoving: false,
+      targetPos: { x: 200 - PET_FOLLOW_DISTANCE - PET_SPACING, y: 0 },
+      scale: 1,
+    },
+  ])
+  const petsTargetPosRef = useRef(pets.map(pet => pet.targetPos))
+  
+  // Helper function to add a new pet
+  const addPet = useCallback((petType = 'doodle', scale = 1) => {
+    setPets(prevPets => {
+      const newId = prevPets.length > 0 ? Math.max(...prevPets.map(p => p.id)) + 1 : 1
+      const lastPet = prevPets[prevPets.length - 1]
+      
+      // Position new pet behind the last pet
+      const initialX = lastPet 
+        ? lastPet.pos.x - (lastPet.facingRight ? PET_SPACING : -PET_SPACING)
+        : playerPos.x - PET_FOLLOW_DISTANCE
+      const initialY = lastPet ? lastPet.pos.y : playerPos.y
+      
+      return [
+        ...prevPets,
+        {
+          id: newId,
+          type: petType,
+          pos: { x: initialX, y: initialY },
+          facingRight: true,
+          isMoving: false,
+          targetPos: { x: initialX, y: initialY },
+          scale,
+        },
+      ]
+    })
+  }, [playerPos])
+  
+  // Helper function to remove a pet by id
+  const removePet = useCallback((petId) => {
+    setPets(prevPets => prevPets.filter(pet => pet.id !== petId))
+  }, [])
+  
   // World objects
   const [platforms, setPlatforms] = useState([])
   const [ladders, setLadders] = useState([])
   const [enemies, setEnemies] = useState([])
   const [damageNumbers, setDamageNumbers] = useState([])
   const [goldPickups, setGoldPickups] = useState([])
+  
+  // Enemy sprites cache
+  const enemySpritesRef = useRef(new Map())
   
   // Character stats
   const [character, setCharacter] = useState({
@@ -194,6 +152,7 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate })
   
   // Refs for timing
   const keysPressed = useRef({ up: false, down: false, left: false, right: false, jump: false })
+  const jumpRequestedRef = useRef(false) // Persists until consumed by game loop
   const jumpCooldownRef = useRef(0)
   const lastPlatformChunkRef = useRef(0)
   const lastAttackRef = useRef(0)
@@ -208,6 +167,40 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate })
       physicsRef.current?.destroy()
     }
   }, [])
+  
+  // Load enemy sprite frames from ENEMY_TYPES definitions
+  useEffect(() => {
+    const loadEnemySprites = async () => {
+      try {
+        // Load sprites for each enemy type that has spriteFrames defined
+        for (const [typeKey, enemyType] of Object.entries(ENEMY_TYPES)) {
+          if (enemyType.spriteFrames && enemyType.spriteFrames.length > 0) {
+            const frameTextures = await Promise.all(
+              enemyType.spriteFrames.map(path => Assets.load(path))
+            )
+            enemySpritesRef.current.set(typeKey, frameTextures)
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load enemy sprites:', error)
+      }
+    }
+    
+    loadEnemySprites()
+  }, [])
+  
+  // Expose addPet and removePet functions globally for console access
+  useEffect(() => {
+    window.gameDebug = {
+      addPet: (petType = 'doodle', scale = 1) => addPet(petType, scale),
+      removePet: (petId) => removePet(petId),
+      getPets: () => pets,
+    }
+    
+    return () => {
+      delete window.gameDebug
+    }
+  }, [addPet, removePet, pets])
   
   // Update parent with stats
   useEffect(() => {
@@ -235,6 +228,24 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate })
       if (e.key === ' ' || e.key === 'Spacebar') {
         e.preventDefault() // Prevent page scroll
         keysPressed.current.jump = true
+        jumpRequestedRef.current = true // Persists until consumed
+      }
+      // Press 'P' to add a new pet
+      if (e.key === 'p' || e.key === 'P') {
+        addPet('doodle', 1)
+      }
+      // Press 'C' to add a cat pet
+      if (e.key === 'c' || e.key === 'C') {
+        addPet('cat', 1)
+      }
+      // Press 'O' to remove the last pet
+      if (e.key === 'o' || e.key === 'O') {
+        setPets(prevPets => {
+          if (prevPets.length > 1) {
+            return prevPets.slice(0, -1)
+          }
+          return prevPets
+        })
       }
     }
     
@@ -252,7 +263,7 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate })
       window.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('keyup', handleKeyUp)
     }
-  }, [])
+  }, [addPet])
   
   // Generate platforms and ladders
   const generatePlatformsAndLadders = useCallback((viewEnd) => {
@@ -270,7 +281,9 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate })
       if (chunkStart <= lastPlatformChunkRef.current) continue
       
       const levels = ['level1', 'level2', 'level3']
+      const chunkPlatforms = { ground: true } // Ground is always accessible
       
+      // First pass: generate platforms for this chunk
       levels.forEach((levelKey, levelIndex) => {
         const probability = 0.7 - (levelIndex * 0.15)
         
@@ -287,20 +300,82 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate })
           }
           newPlatforms.push(platform)
           physics.createPlatform(platform.id, platform.worldX, platform.height, platform.width)
+          chunkPlatforms[levelKey] = platform
+        }
+      })
+      
+      // Second pass: generate ladders with proper connectivity
+      // For each platform, check if we can create an accessible ladder to it
+      levels.forEach((levelKey, levelIndex) => {
+        const platform = chunkPlatforms[levelKey]
+        if (!platform) return
+        
+        // Determine the lower level
+        const lowerLevelKey = levelIndex === 0 ? 'ground' : levels[levelIndex - 1]
+        const lowerPlatform = chunkPlatforms[lowerLevelKey]
+        
+        // Only create ladder if there's something to stand on below
+        // For level1: ground is always accessible
+        // For level2+: need a platform at the level below in this chunk
+        const canCreateLadder = lowerLevelKey === 'ground' || lowerPlatform
+        
+        if (canCreateLadder && seededRandom(chunk * 47 + levelIndex * 61) < 0.7) {
+          let ladderX
           
-          if (seededRandom(chunk * 47 + levelIndex * 61) < 0.6) {
-            const lowerLevel = levelIndex === 0 ? 'ground' : levels[levelIndex - 1]
-            const ladderX = platform.worldX + platformWidth * (0.3 + seededRandom(chunk * 59 + levelIndex * 67) * 0.4)
+          if (lowerLevelKey === 'ground') {
+            // Ladder from ground - place within the upper platform bounds
+            ladderX = platform.worldX + platform.width * (0.2 + seededRandom(chunk * 59 + levelIndex * 67) * 0.6)
+          } else {
+            // Ladder from lower platform - place where both platforms overlap
+            const overlapStart = Math.max(platform.worldX, lowerPlatform.worldX)
+            const overlapEnd = Math.min(
+              platform.worldX + platform.width,
+              lowerPlatform.worldX + lowerPlatform.width
+            )
             
-            const ladder = {
-              id: generateId(),
-              worldX: ladderX,
-              bottomHeight: PLATFORM_LEVELS[lowerLevel],
-              topHeight: PLATFORM_LEVELS[levelKey],
-            }
-            newLadders.push(ladder)
-            physics.addLadder(ladder)
+            // Only create ladder if there's sufficient overlap (at least 40px)
+            if (overlapEnd - overlapStart < 40) return
+            
+            // Place ladder in the overlapping region
+            const overlapWidth = overlapEnd - overlapStart
+            ladderX = overlapStart + overlapWidth * (0.2 + seededRandom(chunk * 59 + levelIndex * 67) * 0.6)
           }
+          
+          const ladder = {
+            id: generateId(),
+            worldX: ladderX,
+            bottomHeight: PLATFORM_LEVELS[lowerLevelKey],
+            topHeight: PLATFORM_LEVELS[levelKey],
+          }
+          newLadders.push(ladder)
+          physics.addLadder(ladder)
+        }
+      })
+      
+      // Additional: Create "stacking" ladders when we have level2+ without lower platform
+      // These ladders will extend from ground all the way up
+      levels.forEach((levelKey, levelIndex) => {
+        if (levelIndex === 0) return // level1 already handled
+        
+        const platform = chunkPlatforms[levelKey]
+        if (!platform) return
+        
+        const lowerLevelKey = levels[levelIndex - 1]
+        const lowerPlatform = chunkPlatforms[lowerLevelKey]
+        
+        // If there's no lower platform but we have this platform,
+        // create a direct ladder from ground (only for level2 to keep it reasonable)
+        if (!lowerPlatform && levelKey === 'level2' && seededRandom(chunk * 71 + levelIndex * 83) < 0.5) {
+          const ladderX = platform.worldX + platform.width * (0.3 + seededRandom(chunk * 89 + levelIndex * 97) * 0.4)
+          
+          const ladder = {
+            id: generateId(),
+            worldX: ladderX,
+            bottomHeight: PLATFORM_LEVELS['ground'],
+            topHeight: PLATFORM_LEVELS[levelKey],
+          }
+          newLadders.push(ladder)
+          physics.addLadder(ladder)
         }
       })
       
@@ -331,9 +406,9 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate })
     const distanceProgress = Math.floor(playerPos.x / 1000)
     
     let availableTypes = ['slime']
+    if (distanceProgress >= 1) availableTypes.push('golem') // Golems spawn early in level1
     if (distanceProgress >= 2) availableTypes.push('bat')
     if (distanceProgress >= 5) availableTypes.push('skeleton')
-    if (distanceProgress >= 10 && Math.random() < 0.1) availableTypes.push('golem')
     
     const typeKey = availableTypes[Math.floor(Math.random() * availableTypes.length)]
     const type = ENEMY_TYPES[typeKey]
@@ -371,6 +446,8 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate })
       dying: false,
       patrolDirection: spawnFromRight ? -1 : 1,
       isPatrolling: preferredLevel !== 'ground',
+      animationFrame: 0,
+      animationTime: 0,
     }
     
     setEnemies(prev => [...prev, newEnemy])
@@ -502,7 +579,12 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate })
       jumpCooldownRef.current -= delta
     }
     
-    if (keysPressed.current.jump && jumpCooldownRef.current <= 0) {
+    // Check for jump request (persists until consumed, unlike keysPressed which resets on keyup)
+    const wantsToJump = jumpRequestedRef.current || keysPressed.current.jump
+    
+    if (wantsToJump && jumpCooldownRef.current <= 0) {
+      jumpRequestedRef.current = false // Consume the jump request
+      
       if (isClimbing) {
         // Jump off ladder
         setIsClimbing(false)
@@ -547,13 +629,27 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate })
         }
         
         if (keysPressed.current.up) {
-          const newY = Math.min(ladder.topHeight, playerPos.y + (CLIMB_SPEED * delta) / 1000)
+          const targetY = playerPos.y + (CLIMB_SPEED * delta) / 1000
+          const newY = Math.min(ladder.topHeight, targetY)
           physics.climbPlayer((newY - playerPos.y))
           moving = true
+          
+          // Auto-dismount when reaching the top of the ladder
+          if (newY >= ladder.topHeight - 1) {
+            setIsClimbing(false)
+            physics.setPlayerClimbing(false)
+          }
         } else if (keysPressed.current.down) {
-          const newY = Math.max(ladder.bottomHeight, playerPos.y - (CLIMB_SPEED * delta) / 1000)
+          const targetY = playerPos.y - (CLIMB_SPEED * delta) / 1000
+          const newY = Math.max(ladder.bottomHeight, targetY)
           physics.climbPlayer((newY - playerPos.y))
           moving = true
+          
+          // Auto-dismount when reaching the bottom of the ladder
+          if (newY <= ladder.bottomHeight + 1) {
+            setIsClimbing(false)
+            physics.setPlayerClimbing(false)
+          }
         }
       }
     } else if (!keysPressed.current.up && !keysPressed.current.down && isClimbing && !keysPressed.current.left && !keysPressed.current.right) {
@@ -580,11 +676,62 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate })
     const pos = physics.getPlayerPosition()
     setPlayerPos({ x: pos.x, y: Math.max(0, pos.y) })
     
+    // Update pets positions (each follows the player or previous pet)
+    setPets(prevPets => {
+      return prevPets.map((pet, index) => {
+        // First pet follows player, others follow the previous pet in a chain
+        let targetX, targetY
+        
+        if (index === 0) {
+          // First pet follows player
+          const followDistance = PET_FOLLOW_DISTANCE
+          targetX = pos.x - (facingRight ? followDistance : -followDistance)
+          targetY = Math.max(0, pos.y)
+        } else {
+          // Subsequent pets follow the previous pet in a chain
+          const prevPet = prevPets[index - 1]
+          const followDistance = PET_SPACING
+          targetX = prevPet.pos.x - (prevPet.facingRight ? followDistance : -followDistance)
+          targetY = prevPet.pos.y
+        }
+        
+        const dx = targetX - pet.pos.x
+        const dy = targetY - pet.pos.y
+        const distance = Math.sqrt(dx * dx + dy * dy)
+        
+        // Pet is moving if there's significant distance to cover
+        const moving = distance > 5
+        
+        // Update pet facing direction based on movement
+        let newFacingRight = pet.facingRight
+        if (Math.abs(dx) > 2) {
+          newFacingRight = dx > 0
+        }
+        
+        // Smooth interpolation towards target
+        // Use faster lerp when far away, slower when close
+        const lerpFactor = distance > 100 ? 0.15 : PET_FOLLOW_SPEED
+        
+        return {
+          ...pet,
+          pos: {
+            x: pet.pos.x + dx * lerpFactor,
+            y: pet.pos.y + dy * lerpFactor,
+          },
+          facingRight: newFacingRight,
+          isMoving: moving,
+          targetPos: { x: targetX, y: targetY },
+        }
+      })
+    })
+    
     // Update enemies
     setEnemies(prev => prev.map(enemy => {
       if (enemy.dying) return enemy
       
       let newWorldX = enemy.worldX
+      let newAnimationTime = enemy.animationTime || 0
+      let newAnimationFrame = enemy.animationFrame || 0
       
       if (enemy.isPatrolling && enemy.platformLevel !== 'ground') {
         const currentPlatform = platforms.find(p => 
@@ -604,14 +751,34 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate })
             enemy.patrolDirection = -1
             newWorldX = currentPlatform.worldX + currentPlatform.width - 60
           }
+          
+          // Update animation
+          newAnimationTime += delta
+          if (newAnimationTime >= ANIMATION_FRAME_DURATION) {
+            newAnimationTime = 0
+            newAnimationFrame = (newAnimationFrame + 1) % 5
+          }
         }
       } else {
         const dirToPlayer = playerPos.x > enemy.worldX ? 1 : -1
         newWorldX = enemy.worldX + (dirToPlayer * enemy.speed * delta) / 1000
         enemy.patrolDirection = dirToPlayer
+        
+        // Update animation
+        newAnimationTime += delta
+        if (newAnimationTime >= ANIMATION_FRAME_DURATION) {
+          newAnimationTime = 0
+          newAnimationFrame = (newAnimationFrame + 1) % 5
+        }
       }
       
-      return { ...enemy, worldX: newWorldX, hit: false }
+      return { 
+        ...enemy, 
+        worldX: newWorldX, 
+        hit: false,
+        animationTime: newAnimationTime,
+        animationFrame: newAnimationFrame,
+      }
     }).filter(enemy => Math.abs(enemy.worldX - playerPos.x) < width * 2))
     
     // Spawn enemies
@@ -637,11 +804,9 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate })
     if (particlesRef.current) {
       drawParticles(particlesRef.current, width, height, scrollOffset, currentBiome)
     }
-    if (characterRef.current) {
-      drawCharacter(characterRef.current, isAttacking, isClimbing, isMoving, isJumping, isFalling)
-    }
+    // Character sprite is now managed via ref, no drawing needed
     
-  }, [playerPos, isClimbing, isMoving, isAttacking, isJumping, isFalling, platforms, generatePlatformsAndLadders, spawnEnemy, attackEnemy, character.attackSpeed, width, height, scrollOffset, currentBiome])
+  }, [playerPos, isClimbing, isMoving, isAttacking, isJumping, isFalling, facingRight, platforms, generatePlatformsAndLadders, spawnEnemy, attackEnemy, character.attackSpeed, width, height, scrollOffset, currentBiome])
   
   useGameLoop(gameUpdate)
   
@@ -655,9 +820,9 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate })
       {/* Ambient particles */}
       <pixiGraphics ref={particlesRef} />
       
-      {/* Ladders */}
+      {/* Ladders - positioned by topHeight since drawLadder draws downward from y=0 */}
       {ladders.map(ladder => {
-        const screenPos = worldToScreen(ladder.worldX, ladder.bottomHeight)
+        const screenPos = worldToScreen(ladder.worldX, ladder.topHeight)
         if (screenPos.x < -100 || screenPos.x > width + 100) return null
         
         return (
@@ -690,20 +855,60 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate })
         const screenPos = worldToScreen(enemy.worldX, enemy.platformHeight)
         if (screenPos.x < -100 || screenPos.x > width + 100) return null
         
+        const enemyHeight = ENEMY_TYPES[enemy.type].height
+        const enemyWidth = ENEMY_TYPES[enemy.type].width
+        // Bats hover above ground, other enemies need offset to align base with platform surface
+        const yOffset = enemy.type === 'bat' ? -enemyHeight * 0.3 : 20
+        
+        // Get sprite frames for this enemy type
+        const enemyFrames = enemySpritesRef.current.get(enemy.type)
+        const currentFrame = enemy.animationFrame || 0
+        
         return (
-          <pixiContainer key={`enemy-${enemy.id}`} x={screenPos.x} y={screenPos.y} scale={{ x: enemy.patrolDirection === 1 ? 1 : -1, y: 1 }}>
-            <pixiGraphics draw={(g) => drawEnemy(g, enemy.type, enemy.hit, enemy.dying)} />
-            <pixiGraphics y={-ENEMY_TYPES[enemy.type].height - 15} scale={{ x: enemy.patrolDirection === 1 ? 1 : -1, y: 1 }} draw={(g) => drawHealthBar(g, enemy.health, enemy.maxHealth)} />
+          <pixiContainer key={`enemy-${enemy.id}`} x={screenPos.x} y={screenPos.y + yOffset} scale={{ x: enemy.patrolDirection === 1 ? 1 : -1, y: 1 }}>
+            {/* Render sprite if available, otherwise fallback to drawn graphics */}
+            {enemyFrames && enemyFrames[currentFrame] ? (
+              <pixiSprite
+                texture={enemyFrames[currentFrame]}
+                anchor={{ x: 0.5, y: 1 }}
+                width={enemyWidth}
+                height={enemyHeight}
+                alpha={enemy.dying ? 0.5 : (enemy.hit ? 0.8 : 1)}
+              />
+            ) : (
+              <pixiGraphics draw={(g) => drawEnemy(g, enemy.type, enemy.hit, enemy.dying)} />
+            )}
+            <pixiGraphics y={-enemyHeight - 15} scale={{ x: enemy.patrolDirection === 1 ? 1 : -1, y: 1 }} draw={(g) => drawHealthBar(g, enemy.health, enemy.maxHealth)} />
           </pixiContainer>
         )
       })}
       
-      {/* Player */}
-      <pixiGraphics
-        ref={characterRef}
+      {/* Pet companions */}
+      {pets.map((pet) => {
+        const screenPos = worldToScreen(pet.pos.x, pet.pos.y)
+        return (
+          <Pet
+            key={`pet-${pet.id}`}
+            x={screenPos.x}
+            y={screenPos.y}
+            facingRight={pet.facingRight}
+            isMoving={pet.isMoving}
+            petType={pet.type}
+            scale={pet.scale}
+          />
+        )
+      })}
+      
+      {/* Player character */}
+      <Character
         x={playerScreen.x}
         y={playerScreen.y}
-        scale={{ x: facingRight ? 1 : -1, y: 1 }}
+        facingRight={facingRight}
+        isMoving={isMoving}
+        isClimbing={isClimbing}
+        showClimbIndicator={!!nearbyLadder && !isClimbing}
+        showClimbingControls={isClimbing}
+        characterType={selectedCharacter}
       />
       
       {/* Damage numbers */}
@@ -753,38 +958,6 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate })
           />
         )
       })}
-      
-      {/* Climb indicator */}
-      {nearbyLadder && !isClimbing && (
-        <pixiText
-          text="↑↓ Climb"
-          x={playerScreen.x + (facingRight ? 30 : -30)}
-          y={playerScreen.y - 45}
-          anchor={0.5}
-          style={{
-            fill: 0xffff00,
-            fontSize: 14,
-            fontWeight: 'bold',
-            stroke: { color: 0x000000, width: 2 },
-          }}
-        />
-      )}
-      
-      {/* Jump indicator while climbing */}
-      {isClimbing && (
-        <pixiText
-          text="SPACE: Jump  ←→: Dismount"
-          x={playerScreen.x}
-          y={playerScreen.y - 50}
-          anchor={0.5}
-          style={{
-            fill: 0x88ffff,
-            fontSize: 12,
-            fontWeight: 'bold',
-            stroke: { color: 0x000000, width: 2 },
-          }}
-        />
-      )}
     </>
   )
 }
@@ -796,6 +969,7 @@ export function GameStage({
   onStatsUpdate,
   onKill,
   onDistanceUpdate,
+  selectedCharacter,
 }) {
   return (
     <Application
@@ -810,6 +984,7 @@ export function GameStage({
         onStatsUpdate={onStatsUpdate}
         onKill={onKill}
         onDistanceUpdate={onDistanceUpdate}
+        selectedCharacter={selectedCharacter}
       />
     </Application>
   )

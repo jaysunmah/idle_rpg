@@ -7,9 +7,39 @@ A relaxing idle RPG game where your hero automatically battles through an endles
 - **Infinite Side-Scrolling**: Travel through procedurally endless terrain
 - **Auto-Combat**: Your hero automatically attacks enemies in range
 - **Multiple Enemy Types**: Face slimes, bats, skeletons, and stone golems
+- **Pet Companions**: Adorable pets that follow you on your adventure
 - **Progression System**: Gain XP, level up, and become stronger
 - **Upgrades**: Spend gold to enhance damage, attack speed, and critical hits
 - **Parallax Backgrounds**: Enjoy beautiful layered scrolling scenery
+
+## Controls
+
+- **Arrow Keys / WASD**: Move character
+- **Space**: Jump
+- **Up/Down**: Climb ladders
+- **P**: Add a Doodle pet
+- **C**: Add a Cat pet
+- **O**: Remove the last pet
+
+## Pet System
+
+The game now features multiple pet companions that follow your character in a chain!
+
+### Available Pets
+- **Cream Golden Doodle Knight**: A loyal knight companion
+- **White Orange Cat Wizard**: A magical feline friend
+
+### Managing Pets
+- Press **P** to add a Doodle pet
+- Press **C** to add a Cat wizard pet
+- Press **O** to remove the last pet
+- Use the browser console for advanced pet management:
+  ```javascript
+  window.gameDebug.addPet('doodle', 1)  // Add a doodle
+  window.gameDebug.addPet('cat', 1)     // Add a cat
+  window.gameDebug.getPets()            // View all pets
+  window.gameDebug.removePet(petId)     // Remove specific pet
+  ```
 
 ## How to Play
 

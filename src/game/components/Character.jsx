@@ -1,127 +1,167 @@
-import { useCallback, useMemo } from 'react'
-import { Graphics, Container, Text } from 'pixi.js'
+import { useRef, useState, useEffect, useCallback } from 'react'
+import { Sprite, Assets } from 'pixi.js'
+import { getCharacter, DEFAULT_CHARACTER } from '../characters'
 
 // Character dimensions
-export const CHARACTER_WIDTH = 40
-export const CHARACTER_HEIGHT = 60
+export const CHARACTER_WIDTH = 90
+export const CHARACTER_HEIGHT = 135
+
+const ANIMATION_FRAME_DURATION = 100 // milliseconds per frame
 
 export function Character({ 
   x, 
   y, 
   facingRight = true, 
-  isAttacking = false,
-  isClimbing = false,
   isMoving = false,
+  isClimbing = false,
   showClimbIndicator = false,
+  showClimbingControls = false,
+  characterType = DEFAULT_CHARACTER,
 }) {
-  // Draw the character using Graphics
-  const drawCharacter = useCallback((g) => {
-    g.clear()
-    
-    // Animation offset for attacking
-    const attackOffset = isAttacking ? 5 : 0
-    
-    // Legs
-    const legColor = 0x4a3728
-    g.fill({ color: legColor })
-    
-    if (isMoving && !isClimbing) {
-      // Walking animation - alternate legs
-      const time = Date.now() / 100
-      const legOffset = Math.sin(time) * 4
-      g.rect(-8, 35, 8, 25 + legOffset)
-      g.rect(0, 35, 8, 25 - legOffset)
-    } else if (isClimbing) {
-      // Climbing pose
-      g.rect(-10, 30, 8, 28)
-      g.rect(2, 38, 8, 20)
-    } else {
-      // Standing
-      g.rect(-8, 35, 8, 25)
-      g.rect(0, 35, 8, 25)
-    }
-    g.fill()
-    
-    // Body (armor)
-    g.fill({ color: 0x5a6a7a })
-    g.roundRect(-15, 5, 30, 35, 4)
-    g.fill()
-    
-    // Body highlight
-    g.fill({ color: 0x6a7a8a })
-    g.roundRect(-12, 8, 24, 10, 2)
-    g.fill()
-    
-    // Head
-    g.fill({ color: 0xffdbac })
-    g.circle(0, -8, 12)
-    g.fill()
-    
-    // Helmet
-    g.fill({ color: 0x7a8a9a })
-    g.moveTo(-14, -5)
-    g.lineTo(-14, -15)
-    g.lineTo(0, -25)
-    g.lineTo(14, -15)
-    g.lineTo(14, -5)
-    g.closePath()
-    g.fill()
-    
-    // Helmet visor
-    g.fill({ color: 0x2a3a4a })
-    g.rect(-8, -12, 16, 6)
-    g.fill()
-    
-    // Eyes (visible through visor)
-    g.fill({ color: 0xffffff })
-    g.circle(-4, -9, 2)
-    g.circle(4, -9, 2)
-    g.fill()
-    g.fill({ color: 0x000000 })
-    g.circle(-4, -9, 1)
-    g.circle(4, -9, 1)
-    g.fill()
-    
-    // Sword
-    const swordX = isAttacking ? 25 + attackOffset : 18
-    const swordY = isAttacking ? -5 : 10
-    
-    // Sword handle
-    g.fill({ color: 0x4a3728 })
-    g.rect(swordX - 3, swordY + 15, 6, 12)
-    g.fill()
-    
-    // Sword guard
-    g.fill({ color: 0xffd700 })
-    g.rect(swordX - 8, swordY + 12, 16, 4)
-    g.fill()
-    
-    // Sword blade
-    const bladeColor = isAttacking ? 0xffffff : 0xd0d0d0
-    g.fill({ color: bladeColor })
-    g.moveTo(swordX - 4, swordY + 12)
-    g.lineTo(swordX + 4, swordY + 12)
-    g.lineTo(swordX + 3, swordY - 25)
-    g.lineTo(swordX, swordY - 30)
-    g.lineTo(swordX - 3, swordY - 25)
-    g.closePath()
-    g.fill()
-    
-    // Sword shine
-    g.fill({ color: 0xffffff, alpha: 0.5 })
-    g.rect(swordX - 1, swordY - 20, 2, 15)
-    g.fill()
-    
-  }, [isAttacking, isClimbing, isMoving])
+  // Get character sprite frames based on type
+  const characterData = getCharacter(characterType)
+  const spriteFrames = characterData.spriteFrames
+  const containerRef = useRef(null)
+  const spriteRef = useRef(null)
+  const animationFramesRef = useRef([])
+  const currentFrameRef = useRef(0)
+  const animationTimeRef = useRef(0)
+  const lastTimeRef = useRef(Date.now())
+  const [spriteLoaded, setSpriteLoaded] = useState(false)
 
-  return {
-    x,
-    y,
-    scaleX: facingRight ? 1 : -1,
-    draw: drawCharacter,
-    showClimbIndicator,
-    facingRight,
-  }
+  // Load character animation frames
+  useEffect(() => {
+    let mounted = true
+    
+    const loadSprite = async () => {
+      try {
+        // Clean up previous sprite if exists
+        if (spriteRef.current) {
+          spriteRef.current.destroy()
+          spriteRef.current = null
+        }
+        
+        const frameTextures = await Promise.all(
+          spriteFrames.map(path => Assets.load(path))
+        )
+        
+        if (!mounted) return
+        
+        animationFramesRef.current = frameTextures
+        
+        // Create sprite with first frame
+        const sprite = new Sprite(frameTextures[0])
+        sprite.anchor.set(0.5, 0.9) // Anchor at bottom center (feet)
+        sprite.width = CHARACTER_WIDTH
+        sprite.height = CHARACTER_HEIGHT
+        spriteRef.current = sprite
+        
+        if (containerRef.current) {
+          // Remove any existing children
+          containerRef.current.removeChildren()
+          containerRef.current.addChild(sprite)
+        }
+        
+        setSpriteLoaded(true)
+      } catch (error) {
+        console.error('Failed to load character sprite:', error)
+      }
+    }
+    
+    loadSprite()
+    
+    return () => {
+      mounted = false
+      if (spriteRef.current) {
+        spriteRef.current.destroy()
+      }
+    }
+  }, [spriteFrames])
+
+  // Handle animation updates
+  useEffect(() => {
+    if (!spriteLoaded || !spriteRef.current || animationFramesRef.current.length === 0) {
+      return
+    }
+
+    let animationFrameId
+    
+    const animate = () => {
+      const now = Date.now()
+      const delta = now - lastTimeRef.current
+      lastTimeRef.current = now
+
+      // Only animate when moving or climbing
+      if (isMoving || isClimbing) {
+        animationTimeRef.current += delta
+        
+        if (animationTimeRef.current >= ANIMATION_FRAME_DURATION) {
+          animationTimeRef.current = 0
+          currentFrameRef.current = (currentFrameRef.current + 1) % 5
+          spriteRef.current.texture = animationFramesRef.current[currentFrameRef.current]
+        }
+      } else {
+        // When idle, show first frame
+        currentFrameRef.current = 0
+        animationTimeRef.current = 0
+        spriteRef.current.texture = animationFramesRef.current[0]
+      }
+
+      animationFrameId = requestAnimationFrame(animate)
+    }
+
+    animationFrameId = requestAnimationFrame(animate)
+
+    return () => {
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId)
+      }
+    }
+  }, [spriteLoaded, isMoving, isClimbing])
+
+  return (
+    <>
+      {/* Character container with sprite */}
+      <pixiContainer
+        ref={containerRef}
+        x={x}
+        y={y}
+        scale={{ x: facingRight ? 1 : -1, y: 1 }}
+      />
+      
+      {/* Climb indicator */}
+      {showClimbIndicator && (
+        <pixiText
+          text="↑↓ Climb"
+          x={x + (facingRight ? 30 : -30)}
+          y={y - CHARACTER_HEIGHT - 45}
+          anchor={0.5}
+          style={{
+            fill: 0xffff00,
+            fontSize: 14,
+            fontWeight: 'bold',
+            stroke: { color: 0x000000, width: 2 },
+          }}
+        />
+      )}
+      
+      {/* Jump indicator while climbing */}
+      {showClimbingControls && (
+        <pixiText
+          text="SPACE: Jump  ←→: Dismount"
+          x={x}
+          y={y - CHARACTER_HEIGHT - 50}
+          anchor={0.5}
+          style={{
+            fill: 0x88ffff,
+            fontSize: 12,
+            fontWeight: 'bold',
+            stroke: { color: 0x000000, width: 2 },
+          }}
+        />
+      )}
+    </>
+  )
 }
 
 export default Character

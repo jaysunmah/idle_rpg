@@ -1,6 +1,14 @@
 import { useState, useCallback, useEffect } from 'react'
 import './App.css'
 import { GameStage, BIOMES, getBiomeForDistance } from './game'
+import { CharacterSelect } from './components'
+import { getCharacter, DEFAULT_CHARACTER } from './game/characters'
+
+// Game states
+const GAME_STATE = {
+  CHARACTER_SELECT: 'character_select',
+  PLAYING: 'playing',
+}
 
 // Game constants
 const BASE_ATTACK_SPEED = 1000
@@ -9,29 +17,50 @@ const BASE_ATTACK_SPEED = 1000
 const xpForLevel = (level) => Math.floor(100 * Math.pow(1.5, level - 1))
 
 function App() {
+  // Game state management
+  const [gameState, setGameState] = useState(GAME_STATE.CHARACTER_SELECT)
+  const [selectedCharacter, setSelectedCharacter] = useState(DEFAULT_CHARACTER)
+  
   const [screenSize, setScreenSize] = useState({
     width: typeof window !== 'undefined' ? window.innerWidth : 1920,
     height: typeof window !== 'undefined' ? window.innerHeight : 1080,
   })
   
-  // Character stats (managed here for UI)
-  const [character, setCharacter] = useState({
-    level: 1,
-    xp: 0,
-    xpToNext: 100,
-    maxHealth: 100,
-    health: 100,
-    baseDamage: 10,
-    critChance: 0.1,
-    critMultiplier: 2,
-    attackSpeed: BASE_ATTACK_SPEED,
-    gold: 0,
-  })
+  // Get character data for stats modifiers
+  const characterData = getCharacter(selectedCharacter)
+  
+  // Character stats (managed here for UI) - initialized based on selected character
+  const getInitialStats = useCallback((charId) => {
+    const charData = getCharacter(charId)
+    return {
+      level: 1,
+      xp: 0,
+      xpToNext: 100,
+      maxHealth: 100,
+      health: 100,
+      baseDamage: Math.floor(10 * charData.stats.damageMultiplier),
+      critChance: 0.1 + charData.stats.critChanceBonus,
+      critMultiplier: 2,
+      attackSpeed: Math.floor(BASE_ATTACK_SPEED / charData.stats.attackSpeedMultiplier),
+      gold: 0,
+    }
+  }, [])
+  
+  const [character, setCharacter] = useState(() => getInitialStats(DEFAULT_CHARACTER))
+  
+  // Handle character selection
+  const handleCharacterSelect = useCallback((charId) => {
+    setSelectedCharacter(charId)
+    setCharacter(getInitialStats(charId))
+    setDistance(0)
+    setKills(0)
+    setGameState(GAME_STATE.PLAYING)
+  }, [getInitialStats])
   
   const [distance, setDistance] = useState(0)
   const [kills, setKills] = useState(0)
   const [levelUpEffect, setLevelUpEffect] = useState(false)
-  const [showUpgrades, setShowUpgrades] = useState(true)
+  const [showUpgrades, setShowUpgrades] = useState(false)
   
   // Handle window resize
   useEffect(() => {
@@ -108,6 +137,16 @@ function App() {
   // Get current biome for zone indicator
   const currentBiomeKey = getBiomeForDistance(distance)
   const currentBiome = BIOMES[currentBiomeKey]
+  
+  // Show character selection screen
+  if (gameState === GAME_STATE.CHARACTER_SELECT) {
+    return (
+      <CharacterSelect 
+        onSelect={handleCharacterSelect}
+        initialCharacter={selectedCharacter}
+      />
+    )
+  }
 
   return (
     <div className="game-container">
@@ -118,6 +157,7 @@ function App() {
         onStatsUpdate={handleStatsUpdate}
         onKill={handleKill}
         onDistanceUpdate={handleDistanceUpdate}
+        selectedCharacter={selectedCharacter}
       />
       
       {/* UI Overlay */}
@@ -125,7 +165,7 @@ function App() {
         <div className="stats-panel">
           {/* Character Stats */}
           <div className="character-stats">
-            <h2 className="character-name">Hero</h2>
+            <h2 className="character-name">{characterData.name}</h2>
             <div className="character-level">Level {character.level}</div>
             
             <div className="stat-bar">
@@ -222,6 +262,7 @@ function App() {
       <div className="controls-hint">
         <div className="hint-text">← → or A/D to move</div>
         <div className="hint-text">↑ ↓ or W/S to climb</div>
+        <div className="hint-text">SPACE to jump</div>
       </div>
       
       {/* Auto Attack Indicator */}

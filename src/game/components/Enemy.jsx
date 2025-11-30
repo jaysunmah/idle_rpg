@@ -1,10 +1,8 @@
-import { useCallback } from 'react'
-
 // Enemy type definitions
 export const ENEMY_TYPES = {
   slime: {
     name: 'Slime',
-    baseHealth: 30,
+    baseHealth: 15,
     xpReward: 10,
     goldReward: 5,
     speed: 20,
@@ -13,10 +11,19 @@ export const ENEMY_TYPES = {
     color: 0x44cc44,
     canClimb: false,
     preferredLevels: ['ground', 'level1'],
+    sprite: '/assets/enemy-slime.png',
+    spriteFrames: [
+      '/assets/wolf-sprite/frame_1.png',
+      '/assets/wolf-sprite/frame_2.png',
+      '/assets/wolf-sprite/frame_3.png',
+      '/assets/wolf-sprite/frame_4.png',
+      '/assets/wolf-sprite/frame_5.png',
+    ],
+    useAnimatedSprite: true,
   },
   skeleton: {
     name: 'Skeleton',
-    baseHealth: 60,
+    baseHealth: 30,
     xpReward: 25,
     goldReward: 12,
     speed: 35,
@@ -25,10 +32,19 @@ export const ENEMY_TYPES = {
     color: 0xcccccc,
     canClimb: true,
     preferredLevels: ['ground', 'level1', 'level2'],
+    sprite: '/assets/enemy-skeleton.png',
+    spriteFrames: [
+      '/assets/wolf-sprite/frame_1.png',
+      '/assets/wolf-sprite/frame_2.png',
+      '/assets/wolf-sprite/frame_3.png',
+      '/assets/wolf-sprite/frame_4.png',
+      '/assets/wolf-sprite/frame_5.png',
+    ],
+    useAnimatedSprite: true,
   },
   bat: {
     name: 'Bat',
-    baseHealth: 20,
+    baseHealth: 10,
     xpReward: 8,
     goldReward: 3,
     speed: 60,
@@ -37,18 +53,34 @@ export const ENEMY_TYPES = {
     color: 0x6644aa,
     canClimb: false,
     preferredLevels: ['level1', 'level2', 'level3'],
+    spriteFrames: [
+      '/assets/wolf-sprite/frame_1.png',
+      '/assets/wolf-sprite/frame_2.png',
+      '/assets/wolf-sprite/frame_3.png',
+      '/assets/wolf-sprite/frame_4.png',
+      '/assets/wolf-sprite/frame_5.png',
+    ],
+    useAnimatedSprite: true,
   },
   golem: {
     name: 'Stone Golem',
-    baseHealth: 200,
+    baseHealth: 80,
     xpReward: 100,
     goldReward: 50,
     speed: 15,
-    width: 60,
-    height: 70,
+    width: 80,
+    height: 100,
     color: 0x666666,
     canClimb: false,
-    preferredLevels: ['ground'],
+    preferredLevels: ['ground', 'level1'],
+    spriteFrames: [
+      '/assets/golem/frame_1.png',
+      '/assets/golem/frame_2.png',
+      '/assets/golem/frame_3.png',
+      '/assets/golem/frame_4.png',
+      '/assets/golem/frame_5.png',
+    ],
+    useAnimatedSprite: true,
   },
 }
 
@@ -62,7 +94,7 @@ export function drawEnemy(g, type, isHit, isDying) {
   const bodyColor = isHit ? 0xffffff : color
   const alpha = isDying ? 0.5 : 1
   
-  if (type === 'slime') {
+  if (type === 'slime' && !enemyType.sprite) {
     // Slime body - bouncy blob shape
     g.fill({ color: bodyColor, alpha })
     g.moveTo(-width/2, 0)
@@ -216,3 +248,8 @@ export function drawHealthBar(g, health, maxHealth) {
 }
 
 export default { ENEMY_TYPES, drawEnemy, drawHealthBar }
+
+// To add a new enemy type:
+// 1. Add entry to ENEMY_TYPES with spriteFrames array pointing to your animation frames
+// 2. Add a drawEnemy case if you want a fallback when sprites aren't loaded
+// 3. Sprites are automatically loaded by GameStage based on spriteFrames

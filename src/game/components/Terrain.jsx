@@ -83,8 +83,9 @@ export const getBiomeForDistance = (distance) => {
 }
 
 // Seeded random
+const BASE_SEED = 10326
 const seededRandom = (seed) => {
-  const x = Math.sin(seed * 9999) * 10000
+  const x = Math.sin((seed + BASE_SEED) * 9999) * 10000
   return x - Math.floor(x)
 }
 
