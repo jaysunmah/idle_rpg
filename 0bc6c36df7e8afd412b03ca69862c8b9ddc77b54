@@ -18,4 +18,4 @@ Conversations:
 [6]: 4486fd1f-726e-4119-9dff-71b1f71d662c; Update image processing script for frame detection; claude-4.5-opus-high-thinking;
 [7]: 6fe43eda-dc52-4477-b5e0-752bba2d3483; Edit sprite parsing script for frames; gemini-3-pro;
 [8]: c0c216b2-61ac-4b34-a782-40d6ae871a44; Fix character size aspect ratio bug; claude-4.5-opus-high-thinking;
-[9]: afc71b80-7dcf-41c6-bf95-45053c9d2357; Implement customizable character sprites; gemini-3-pro;
+[9]: f780e6f5-31c1-440e-ac91-d813fdb8d14d; Implement customizable character sprites; gemini-3-pro;
