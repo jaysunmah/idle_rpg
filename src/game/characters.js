@@ -2,105 +2,40 @@
 // Each character has a name, description, sprite frames, and optional stats modifiers
 
 export const CHARACTER_TYPES = {
-  'bamboo-princess-archer': {
-    id: 'bamboo-princess-archer',
-    name: 'Bamboo Princess',
-    description: 'A swift archer princess from the bamboo groves. Balanced stats with quick attacks.',
+  'beginner-adventurer': {
+    id: 'beginner-adventurer',
+    name: 'Beginner Adventurer',
+    description: 'A brave beginner starting their journey. Balanced stats.',
+    // Sprite sheet - used by Character.jsx for in-game rendering
+    spriteSheet: {
+      json: '/assets/beginner-adventurer.json',
+      image: '/assets/beginner-adventurer.png',
+      animations: {
+        walk: 'frames/walk',
+        attack: 'frames/attack',
+        climb: 'frames/climb',
+      },
+    },
+    // Individual frames - used by CharacterSelect for preview animation
     spriteFrames: [
-      '/assets/bamboo-princess-archer/frame_1.png',
-      '/assets/bamboo-princess-archer/frame_2.png',
-      '/assets/bamboo-princess-archer/frame_3.png',
-      '/assets/bamboo-princess-archer/frame_4.png',
-      '/assets/bamboo-princess-archer/frame_5.png',
+      '/assets/beginner-adventurer-walking/frames/walk_1.png',
+      '/assets/beginner-adventurer-walking/frames/walk_2.png',
+      '/assets/beginner-adventurer-walking/frames/walk_3.png',
+      '/assets/beginner-adventurer-walking/frames/walk_4.png',
+      '/assets/beginner-adventurer-walking/frames/walk_5.png',
     ],
-    previewFrame: '/assets/bamboo-princess-archer/frame_1.png',
+    previewFrame: '/assets/beginner-adventurer-walking/frames/walk_1.png',
     stats: {
       damageMultiplier: 1.0,
       attackSpeedMultiplier: 1.0,
       critChanceBonus: 0,
     },
-    color: '#88cc88',
-  },
-  'wizard': {
-    id: 'wizard',
-    name: 'Starry Wizard',
-    description: 'A mysterious wizard wielding arcane powers. Higher crit chance but slower attacks.',
-    spriteFrames: [
-      '/assets/wizard/frame_1.png',
-      '/assets/wizard/frame_2.png',
-      '/assets/wizard/frame_3.png',
-      '/assets/wizard/frame_4.png',
-      '/assets/wizard/frame_5.png',
-    ],
-    previewFrame: '/assets/wizard/frame_1.png',
-    stats: {
-      damageMultiplier: 1.2,
-      attackSpeedMultiplier: 0.9,
-      critChanceBonus: 0.05,
-    },
-    color: '#8866ff',
-  },
-  'cream-golden-doodle-knight': {
-    id: 'cream-golden-doodle-knight',
-    name: 'Doodle Knight',
-    description: 'A valiant golden doodle in shining armor. High damage but slower attack speed.',
-    spriteFrames: [
-      '/assets/cream-golden-doodle-knight/frame_1.png',
-      '/assets/cream-golden-doodle-knight/frame_2.png',
-      '/assets/cream-golden-doodle-knight/frame_3.png',
-      '/assets/cream-golden-doodle-knight/frame_4.png',
-      '/assets/cream-golden-doodle-knight/frame_5.png',
-    ],
-    previewFrame: '/assets/cream-golden-doodle-knight/frame_1.png',
-    stats: {
-      damageMultiplier: 1.3,
-      attackSpeedMultiplier: 0.85,
-      critChanceBonus: 0,
-    },
-    color: '#ffcc66',
-  },
-  'white-orange-cat-wizard': {
-    id: 'white-orange-cat-wizard',
-    name: 'Cat Mage',
-    description: 'A mystical feline spellcaster. Fast attacks with moderate damage.',
-    spriteFrames: [
-      '/assets/white-orange-cat-wizard/frame_1.png',
-      '/assets/white-orange-cat-wizard/frame_2.png',
-      '/assets/white-orange-cat-wizard/frame_3.png',
-      '/assets/white-orange-cat-wizard/frame_4.png',
-      '/assets/white-orange-cat-wizard/frame_5.png',
-    ],
-    previewFrame: '/assets/white-orange-cat-wizard/frame_1.png',
-    stats: {
-      damageMultiplier: 0.9,
-      attackSpeedMultiplier: 1.2,
-      critChanceBonus: 0.03,
-    },
-    color: '#ff9966',
-  },
-  'bamboo-princess': {
-    id: 'bamboo-princess',
-    name: 'Bamboo Maiden',
-    description: 'A graceful princess with balanced abilities. Perfect for beginners.',
-    spriteFrames: [
-      '/assets/bamboo-princess/frame_1.png',
-      '/assets/bamboo-princess/frame_2.png',
-      '/assets/bamboo-princess/frame_3.png',
-      '/assets/bamboo-princess/frame_4.png',
-      '/assets/bamboo-princess/frame_5.png',
-    ],
-    previewFrame: '/assets/bamboo-princess/frame_1.png',
-    stats: {
-      damageMultiplier: 1.0,
-      attackSpeedMultiplier: 1.0,
-      critChanceBonus: 0,
-    },
-    color: '#ff88aa',
+    color: '#4488ff',
   },
 }
 
 // Default character
-export const DEFAULT_CHARACTER = 'bamboo-princess-archer'
+export const DEFAULT_CHARACTER = 'beginner-adventurer'
 
 // Get character by ID
 export const getCharacter = (id) => CHARACTER_TYPES[id] || CHARACTER_TYPES[DEFAULT_CHARACTER]

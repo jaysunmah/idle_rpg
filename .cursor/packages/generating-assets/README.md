@@ -18,18 +18,19 @@ First, you will use the provided image generation tool to generate animation fra
 > 
 > Generate animation frames arranged **LEFT-TO-RIGHT in ONE ROW** (not stacked vertically, not in a grid).
 
-1. In a SINGLE `generate_image` call, generate animation frames in a **SINGLE HORIZONTAL ROW**. Do NOT stack frames vertically or arrange them in a 2x3 grid. They must be side-by-side in one row.
+1. In a SINGLE `generate_image` call, generate all of the requested animation frames.
 2. Make sure each frame is clearly separated and not overlapping with one another as we will be trimming them later.
 3. Please render the background to be EXACTLY red (255,0,0). Do not include any other colors or borders to the frames.
 4. Make sure the asset is facing towards the right. 
 
 Once the image is generated, you **MUST** inspect the image yourself to verify:
-- All frames are in a single horizontal row (not stacked or in a grid)
 - Frames are clearly separated and not overlapping
 - The background is red
 - **Count the actual number of frames generated** — the image generator may produce more or fewer frames than requested, and that's OK. You will need this count for Phase 2.
 
 # Phase 2: Image processing guidelines:
+
+DO NOT PROCEED ONTO PHASE 2 UNTIL YOU HAVE VERIFIED THE IMAGE GENERATION AND COUNTED THE NUMBER OF FRAMES.
 
 1. Run `magick` to strip out the red background. Use 20% fuzz.
 2. Then you will need to use `uv` to run the `process_image_spreadsheet.py` script inside `scripts` to create separate frames from the image. **Pass the actual frame count you observed in Phase 1 as the `num_frames` argument.** This script will automatically detect the bounding box of the asset and trim the image to only include the asset, so it is imperative that you pass the correct number of frames.

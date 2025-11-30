@@ -13,10 +13,10 @@ export function CharacterSelect({ onSelect, initialCharacter }) {
   // Animate the preview sprite
   useEffect(() => {
     const interval = setInterval(() => {
-      setPreviewFrame(prev => (prev + 1) % 5)
+      setPreviewFrame(prev => (prev + 1) % selectedCharacter.spriteFrames.length)
     }, 150)
     return () => clearInterval(interval)
-  }, [selectedId])
+  }, [selectedId, selectedCharacter.spriteFrames.length])
   
   // Keyboard support
   useEffect(() => {

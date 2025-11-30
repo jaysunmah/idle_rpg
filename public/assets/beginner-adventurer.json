@@ -1,0 +1,161 @@
+{"frames": {
+
+"frames/attack_1.png":
+{
+	"frame": {"x":663,"y":585,"w":555,"h":625},
+	"rotated": true,
+	"trimmed": true,
+	"spriteSourceSize": {"x":4,"y":4,"w":555,"h":625},
+	"sourceSize": {"w":563,"h":633},
+	"anchor": {"x":0.307282,"y":0.979463}
+},
+"frames/attack_2.png":
+{
+	"frame": {"x":1,"y":1244,"w":542,"h":625},
+	"rotated": true,
+	"trimmed": true,
+	"spriteSourceSize": {"x":4,"y":4,"w":542,"h":625},
+	"sourceSize": {"w":550,"h":633},
+	"anchor": {"x":0.62,"y":0.981043}
+},
+"frames/attack_3.png":
+{
+	"frame": {"x":1,"y":617,"w":648,"h":625},
+	"rotated": false,
+	"trimmed": true,
+	"spriteSourceSize": {"x":4,"y":4,"w":648,"h":625},
+	"sourceSize": {"w":656,"h":633},
+	"anchor": {"x":0.278963,"y":0.982622}
+},
+"frames/attack_4.png":
+{
+	"frame": {"x":1,"y":1,"w":660,"h":614},
+	"rotated": false,
+	"trimmed": true,
+	"spriteSourceSize": {"x":4,"y":4,"w":660,"h":614},
+	"sourceSize": {"w":668,"h":622},
+	"anchor": {"x":0.261976,"y":0.977492}
+},
+"frames/attack_5.png":
+{
+	"frame": {"x":1304,"y":1114,"w":567,"h":614},
+	"rotated": true,
+	"trimmed": true,
+	"spriteSourceSize": {"x":4,"y":4,"w":567,"h":614},
+	"sourceSize": {"w":575,"h":622},
+	"anchor": {"x":0.311304,"y":0.974277}
+},
+"frames/climb_1.png":
+{
+	"frame": {"x":651,"y":1142,"w":301,"h":651},
+	"rotated": true,
+	"trimmed": true,
+	"spriteSourceSize": {"x":4,"y":4,"w":301,"h":651},
+	"sourceSize": {"w":309,"h":659},
+	"anchor": {"x":0.521036,"y":0.975721}
+},
+"frames/climb_2.png":
+{
+	"frame": {"x":1920,"y":1428,"w":325,"h":651},
+	"rotated": true,
+	"trimmed": true,
+	"spriteSourceSize": {"x":4,"y":4,"w":325,"h":651},
+	"sourceSize": {"w":333,"h":659},
+	"anchor": {"x":0.51952,"y":0.971168}
+},
+"frames/climb_3.png":
+{
+	"frame": {"x":1920,"y":1101,"w":325,"h":617},
+	"rotated": true,
+	"trimmed": true,
+	"spriteSourceSize": {"x":4,"y":4,"w":325,"h":617},
+	"sourceSize": {"w":333,"h":625},
+	"anchor": {"x":0.522523,"y":0.984}
+},
+"frames/climb_4.png":
+{
+	"frame": {"x":628,"y":1445,"w":326,"h":651},
+	"rotated": true,
+	"trimmed": true,
+	"spriteSourceSize": {"x":4,"y":4,"w":326,"h":651},
+	"sourceSize": {"w":334,"h":659},
+	"anchor": {"x":0.511976,"y":0.974203}
+},
+"frames/climb_5.png":
+{
+	"frame": {"x":2548,"y":1,"w":324,"h":639},
+	"rotated": false,
+	"trimmed": true,
+	"spriteSourceSize": {"x":4,"y":4,"w":324,"h":639},
+	"sourceSize": {"w":332,"h":647},
+	"anchor": {"x":0.506024,"y":0.98609}
+},
+"frames/climb_6.png":
+{
+	"frame": {"x":2548,"y":642,"w":314,"h":663},
+	"rotated": false,
+	"trimmed": true,
+	"spriteSourceSize": {"x":4,"y":4,"w":314,"h":663},
+	"sourceSize": {"w":322,"h":671},
+	"anchor": {"x":0.524845,"y":0.95082}
+},
+"frames/walk_1.png":
+{
+	"frame": {"x":1916,"y":1,"w":560,"h":630},
+	"rotated": true,
+	"trimmed": true,
+	"spriteSourceSize": {"x":4,"y":4,"w":560,"h":630},
+	"sourceSize": {"w":568,"h":638},
+	"anchor": {"x":0.360915,"y":0.984326}
+},
+"frames/walk_2.png":
+{
+	"frame": {"x":1916,"y":563,"w":536,"h":630},
+	"rotated": true,
+	"trimmed": true,
+	"spriteSourceSize": {"x":4,"y":4,"w":536,"h":630},
+	"sourceSize": {"w":544,"h":638},
+	"anchor": {"x":0.323529,"y":0.979624}
+},
+"frames/walk_3.png":
+{
+	"frame": {"x":663,"y":1,"w":582,"h":630},
+	"rotated": true,
+	"trimmed": true,
+	"spriteSourceSize": {"x":4,"y":4,"w":582,"h":630},
+	"sourceSize": {"w":590,"h":638},
+	"anchor": {"x":0.345763,"y":0.982759}
+},
+"frames/walk_4.png":
+{
+	"frame": {"x":1295,"y":575,"w":537,"h":619},
+	"rotated": true,
+	"trimmed": true,
+	"spriteSourceSize": {"x":4,"y":4,"w":537,"h":619},
+	"sourceSize": {"w":545,"h":627},
+	"anchor": {"x":0.343119,"y":0.977671}
+},
+"frames/walk_5.png":
+{
+	"frame": {"x":1295,"y":1,"w":572,"h":619},
+	"rotated": true,
+	"trimmed": true,
+	"spriteSourceSize": {"x":4,"y":4,"w":572,"h":619},
+	"sourceSize": {"w":580,"h":627},
+	"anchor": {"x":0.355172,"y":0.977671}
+}},
+"animations": {
+	"frames/attack": ["frames/attack_1.png","frames/attack_2.png","frames/attack_3.png","frames/attack_4.png","frames/attack_5.png"],
+	"frames/climb": ["frames/climb_1.png","frames/climb_2.png","frames/climb_3.png","frames/climb_4.png","frames/climb_5.png","frames/climb_6.png"],
+	"frames/walk": ["frames/walk_1.png","frames/walk_2.png","frames/walk_3.png","frames/walk_4.png","frames/walk_5.png"]
+},
+"meta": {
+	"app": "https://www.codeandweb.com/texturepacker",
+	"version": "1.1",
+	"image": "beginner-adventurer.png",
+	"format": "RGBA8888",
+	"size": {"w":2873,"h":1787},
+	"scale": "1",
+	"smartupdate": "$TexturePacker:SmartUpdate:3f8ef3e56c93f6b32b9634d77f3d7632:e92143599386661692c7b811e9a4f253:967666bd2dc452304c51f66a78a5cd81$"
+}
+}

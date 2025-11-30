@@ -24,7 +24,7 @@ extend({ Container, Graphics, Text, Sprite })
 
 // Game constants
 const ATTACK_RANGE = 200
-const BASE_ATTACK_SPEED = 1000
+const BASE_ATTACK_SPEED = 600
 const ENEMY_SPAWN_RATE = 2500
 const CLIMB_SPEED = 180
 const MOVE_SPEED = 200
@@ -151,12 +151,19 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
   })
   
   // Refs for timing
-  const keysPressed = useRef({ up: false, down: false, left: false, right: false, jump: false })
+  const keysPressed = useRef({ up: false, down: false, left: false, right: false, jump: false, attack: false })
   const jumpRequestedRef = useRef(false) // Persists until consumed by game loop
   const jumpCooldownRef = useRef(0)
   const lastPlatformChunkRef = useRef(0)
   const lastAttackRef = useRef(0)
   const lastSpawnRef = useRef(0)
+  const attackTimeoutRef = useRef(null)
+  
+  // Use a ref for addPet to avoid re-binding event listeners
+  const addPetRef = useRef(addPet)
+  useEffect(() => {
+    addPetRef.current = addPet
+  }, [addPet])
   
   // Initialize physics
   useEffect(() => {
@@ -230,13 +237,14 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
         keysPressed.current.jump = true
         jumpRequestedRef.current = true // Persists until consumed
       }
+      if (e.key === 'z' || e.key === 'Z') keysPressed.current.attack = true
       // Press 'P' to add a new pet
       if (e.key === 'p' || e.key === 'P') {
-        addPet('doodle', 1)
+        addPetRef.current('doodle', 1)
       }
       // Press 'C' to add a cat pet
       if (e.key === 'c' || e.key === 'C') {
-        addPet('cat', 1)
+        addPetRef.current('cat', 1)
       }
       // Press 'O' to remove the last pet
       if (e.key === 'o' || e.key === 'O') {
@@ -255,6 +263,7 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
       if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keysPressed.current.left = false
       if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keysPressed.current.right = false
       if (e.key === ' ' || e.key === 'Spacebar') keysPressed.current.jump = false
+      if (e.key === 'z' || e.key === 'Z') keysPressed.current.attack = false
     }
     
     window.addEventListener('keydown', handleKeyDown)
@@ -263,7 +272,7 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
       window.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('keyup', handleKeyUp)
     }
-  }, [addPet])
+  }, []) // Empty dependency array - stable event listeners!
   
   // Generate platforms and ladders
   const generatePlatformsAndLadders = useCallback((viewEnd) => {
@@ -455,6 +464,13 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
   
   // Attack enemy
   const attackEnemy = useCallback(() => {
+    // Start attack animation immediately
+    if (attackTimeoutRef.current) {
+        clearTimeout(attackTimeoutRef.current)
+    }
+    setIsAttacking(true)
+    attackTimeoutRef.current = setTimeout(() => setIsAttacking(false), 500)
+
     setEnemies(prev => {
       const inRange = prev.filter(e => {
         if (e.dying) return false
@@ -473,28 +489,30 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
       
       if (inRange.length === 0) return prev
       
-      inRange.sort((a, b) => Math.abs(a.worldX - playerPos.x) - Math.abs(b.worldX - playerPos.x))
-      const target = inRange[0]
+      // Calculate damage for all enemies in range
+      const hits = inRange.map(target => {
+        const isCrit = Math.random() < character.critChance
+        const damage = Math.floor(character.baseDamage * (isCrit ? character.critMultiplier : 1))
+        return { target, isCrit, damage }
+      })
       
-      const isCrit = Math.random() < character.critChance
-      const damage = Math.floor(character.baseDamage * (isCrit ? character.critMultiplier : 1))
-      
-      setIsAttacking(true)
-      setTimeout(() => setIsAttacking(false), 300)
-      
-      const dmgId = generateId()
-      setDamageNumbers(prev => [...prev, {
-        id: dmgId,
-        value: damage,
-        worldX: target.worldX,
-        y: target.platformHeight + (target.height || 60),
-        isCrit,
-        startTime: Date.now(),
-      }])
+      setDamageNumbers(prev => [
+        ...prev, 
+        ...hits.map(({ target, isCrit, damage }) => ({
+          id: generateId(),
+          value: damage,
+          worldX: target.worldX,
+          y: target.platformHeight + (target.height || 60),
+          isCrit,
+          startTime: Date.now(),
+        }))
+      ])
       
       return prev.map(enemy => {
-        if (enemy.id !== target.id) return enemy
+        const hit = hits.find(h => h.target.id === enemy.id)
+        if (!hit) return enemy
         
+        const { damage } = hit
         const newHealth = enemy.health - damage
         
         if (newHealth <= 0) {
@@ -787,8 +805,8 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
       spawnEnemy()
     }
     
-    // Auto attack
-    if (now - lastAttackRef.current > character.attackSpeed) {
+    // Manual attack
+    if (keysPressed.current.attack && now - lastAttackRef.current > character.attackSpeed) {
       lastAttackRef.current = now
       attackEnemy()
     }
@@ -906,6 +924,7 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
         facingRight={facingRight}
         isMoving={isMoving}
         isClimbing={isClimbing}
+        isAttacking={isAttacking}
         showClimbIndicator={!!nearbyLadder && !isClimbing}
         showClimbingControls={isClimbing}
         characterType={selectedCharacter}
