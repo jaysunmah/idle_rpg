@@ -2,8 +2,7 @@ import { useRef, useState, useEffect, useCallback } from 'react'
 import { Sprite, Assets } from 'pixi.js'
 import { getCharacter, DEFAULT_CHARACTER } from '../characters'
 
-// Character dimensions
-export const CHARACTER_WIDTH = 90
+// Target character height (width will be calculated to preserve aspect ratio)
 export const CHARACTER_HEIGHT = 135
 
 const ANIMATION_FRAME_DURATION = 100 // milliseconds per frame
@@ -52,8 +51,13 @@ export function Character({
         // Create sprite with first frame
         const sprite = new Sprite(frameTextures[0])
         sprite.anchor.set(0.5, 0.9) // Anchor at bottom center (feet)
-        sprite.width = CHARACTER_WIDTH
+        
+        // Scale uniformly to preserve aspect ratio based on target height
+        const texture = frameTextures[0]
+        const aspectRatio = texture.width / texture.height
         sprite.height = CHARACTER_HEIGHT
+        sprite.width = CHARACTER_HEIGHT * aspectRatio
+        
         spriteRef.current = sprite
         
         if (containerRef.current) {
