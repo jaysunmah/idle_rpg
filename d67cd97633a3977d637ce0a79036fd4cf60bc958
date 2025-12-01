@@ -8,4 +8,4 @@ Conversations:
 [1]: 6af31df4-95a8-4a0a-8602-25182ddfe1db; Implement auto-attack mode for characters; gemini-3-pro;
 [2]: 8b8fd36b-01d1-42ca-adc5-6da914fc1cb0; Fix auto attack logic for platforms; claude-4.5-opus-high-thinking;
 [3]: 68042637-9682-4465-821a-7fd0d7c1ae65; Fix AI climbing behavior in auto-attack; gemini-3-pro;
-[4]: 0da83705-6270-4d02-a72f-41e5b1e99d5e; Adjust mob movement and animation smoothness; claude-4.5-opus-high-thinking;
+[4]: db5b7de3-d2f5-4d13-9adb-4d462fc3d49e; Replace wolf sprite with new sheet; claude-4.5-opus-high-thinking;
