@@ -861,6 +861,128 @@ h1, h2, h3, h4 {
   transform: scale(1.05);
 }
 
+/* New Game Button */
+.new-game-toggle {
+  position: absolute;
+  top: 20px;
+  right: 70px;
+  background: rgba(10, 10, 20, 0.95);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 20px;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  transition: all 0.2s ease;
+}
+
+.new-game-toggle:hover {
+  border-color: var(--accent-crimson);
+  transform: scale(1.05);
+}
+
+/* Modal Overlay */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: modal-fade-in 0.2s ease-out;
+  backdrop-filter: blur(4px);
+}
+
+@keyframes modal-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.modal-content {
+  background: linear-gradient(180deg, #1a1a28 0%, #12121a 100%);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  padding: 28px 36px;
+  max-width: 380px;
+  text-align: center;
+  animation: modal-slide-up 0.25s ease-out;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 40px rgba(168, 85, 247, 0.1);
+}
+
+@keyframes modal-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.modal-title {
+  font-family: 'Cinzel', serif;
+  font-size: 22px;
+  color: var(--accent-gold);
+  margin-bottom: 12px;
+  text-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+}
+
+.modal-text {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-bottom: 24px;
+}
+
+.modal-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.modal-button {
+  padding: 12px 28px;
+  border-radius: 8px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.modal-button.cancel {
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+}
+
+.modal-button.cancel:hover {
+  border-color: var(--text-secondary);
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.modal-button.confirm {
+  background: linear-gradient(180deg, #dc143c 0%, #a01030 100%);
+  border: 1px solid #ff2050;
+  color: white;
+  box-shadow: 0 4px 15px rgba(220, 20, 60, 0.3);
+}
+
+.modal-button.confirm:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(220, 20, 60, 0.5);
+  filter: brightness(1.1);
+}
+
 .upgrade-button {
   width: 100%;
   padding: 10px 12px;

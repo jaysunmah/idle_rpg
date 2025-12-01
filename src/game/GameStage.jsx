@@ -18,7 +18,7 @@ import {
 import { getCharacter } from './characters'
 import { PhysicsEngine, PLATFORM_LEVELS } from './PhysicsEngine'
 import { useGameLoop } from './useGameLoop'
-import { saveGame, loadGame } from './persistence'
+// Persistence is now handled in App.jsx
 
 // Extend PixiJS components for React
 extend({ Container, Graphics, Text, Sprite })
@@ -68,6 +68,113 @@ function isInAttackRange(playerPos, target, attackRange, isClimbing) {
   return isSameLevel && absDx <= attackRange * 0.8
 }
 
+// Helper: Determine which platform level the player is currently on
+function getPlayerCurrentLevel(playerY) {
+  // Check which level the player is closest to
+  const levels = [
+    { key: 'ground', height: PLATFORM_LEVELS.ground },
+    { key: 'level1', height: PLATFORM_LEVELS.level1 },
+    { key: 'level2', height: PLATFORM_LEVELS.level2 },
+    { key: 'level3', height: PLATFORM_LEVELS.level3 },
+  ]
+  
+  let closest = levels[0]
+  let closestDist = Math.abs(playerY - levels[0].height)
+  
+  for (const level of levels) {
+    const dist = Math.abs(playerY - level.height)
+    if (dist < closestDist) {
+      closestDist = dist
+      closest = level
+    }
+  }
+  
+  return closest.key
+}
+
+// Helper: Find a ladder that connects to the target's platform
+function findLadderToTarget(playerPos, target, ladders) {
+  const targetPlatformId = target.platformId
+  const targetLevel = target.platformLevel
+  const playerLevel = getPlayerCurrentLevel(playerPos.y)
+  const needToGoUp = target.platformHeight > playerPos.y
+  
+  // First priority: Find a ladder that directly connects to the target's platform
+  const directLadders = ladders.filter(l => {
+    // Check if player can access this ladder from current position
+    const isAccessible = playerPos.y >= l.bottomHeight - 10 && playerPos.y <= l.topHeight + 10
+    if (!isAccessible) return false
+    
+    if (needToGoUp) {
+      // Going up: ladder's top should connect to target platform
+      // Either by exact platform ID match, or by level match if platformId is unknown
+      if (targetPlatformId !== null) {
+        return l.topPlatformId === targetPlatformId
+      } else if (targetLevel === 'ground') {
+        // Target is on ground, shouldn't need to go up
+        return false
+      } else {
+        // Match by level
+        return l.topLevel === targetLevel
+      }
+    } else {
+      // Going down: ladder's bottom should connect to target platform
+      if (targetPlatformId !== null) {
+        return l.bottomPlatformId === targetPlatformId
+      } else if (targetLevel === 'ground') {
+        // Target is on ground
+        return l.bottomLevel === 'ground'
+      } else {
+        return l.bottomLevel === targetLevel
+      }
+    }
+  })
+  
+  if (directLadders.length > 0) {
+    // Return the closest direct ladder
+    return directLadders.sort((a, b) => 
+      Math.abs(a.worldX - playerPos.x) - Math.abs(b.worldX - playerPos.x)
+    )[0]
+  }
+  
+  // Second priority: Find a ladder that gets us closer to the target level
+  // This handles multi-level traversal (e.g., ground -> level1 -> level2 -> level3)
+  const levelOrder = ['ground', 'level1', 'level2', 'level3']
+  const playerLevelIndex = levelOrder.indexOf(playerLevel)
+  const targetLevelIndex = levelOrder.indexOf(targetLevel)
+  
+  if (playerLevelIndex === -1 || targetLevelIndex === -1) {
+    return null // Unknown levels
+  }
+  
+  const progressLadders = ladders.filter(l => {
+    const isAccessible = playerPos.y >= l.bottomHeight - 10 && playerPos.y <= l.topHeight + 10
+    if (!isAccessible) return false
+    
+    const ladderTopIndex = levelOrder.indexOf(l.topLevel)
+    const ladderBottomIndex = levelOrder.indexOf(l.bottomLevel)
+    
+    if (needToGoUp) {
+      // Check if this ladder takes us up and gets us closer to target
+      // We want: ladder top level > player level AND ladder top level <= target level
+      return ladderTopIndex > playerLevelIndex && ladderTopIndex <= targetLevelIndex
+    } else {
+      // Check if this ladder takes us down and gets us closer to target
+      // We want: ladder bottom level < player level AND ladder bottom level >= target level
+      return ladderBottomIndex < playerLevelIndex && ladderBottomIndex >= targetLevelIndex
+    }
+  })
+  
+  if (progressLadders.length > 0) {
+    // Return the closest progress ladder
+    return progressLadders.sort((a, b) => 
+      Math.abs(a.worldX - playerPos.x) - Math.abs(b.worldX - playerPos.x)
+    )[0]
+  }
+  
+  return null
+}
+
 // Helper: Compute navigation keys to reach a target
 function computeNavigationKeys(playerPos, target, isClimbing, ladders) {
   const keys = { left: false, right: false, up: false, down: false, attack: false }
@@ -92,15 +199,8 @@ function computeNavigationKeys(playerPos, target, isClimbing, ladders) {
       if (dy > 0) keys.up = true
       else keys.down = true
     } else {
-      // Find a useful ladder to reach target's level
-      const usefulLadder = ladders
-        .filter(l => {
-          const isAccessible = playerPos.y >= l.bottomHeight - 10 && playerPos.y <= l.topHeight + 10
-          if (!isAccessible) return false
-          if (dy > 0) return l.topHeight > playerPos.y + 20
-          return l.bottomHeight < playerPos.y - 20
-        })
-        .sort((a, b) => Math.abs(a.worldX - playerPos.x) - Math.abs(b.worldX - playerPos.x))[0]
+      // Find a ladder that actually connects to the target's platform (or gets us closer)
+      const usefulLadder = findLadderToTarget(playerPos, target, ladders)
 
       if (usefulLadder) {
         const ladderDx = usefulLadder.worldX - playerPos.x
@@ -114,7 +214,8 @@ function computeNavigationKeys(playerPos, target, isClimbing, ladders) {
           else keys.left = true
         }
       } else {
-        // No useful ladder - fallback to horizontal movement
+        // No useful ladder found - fallback to horizontal movement towards enemy
+        // This might happen if the enemy is on a platform we can't reach from here
         if (dx > 0) keys.right = true
         else keys.left = true
       }
@@ -236,7 +337,7 @@ const seededRandom = (seed) => {
 }
 
 // Game content component (inside Application)
-function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, selectedCharacter, autoAttackEnabled, setAutoAttackEnabled, onAIStateChange }) {
+function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, selectedCharacter, autoAttackEnabled, setAutoAttackEnabled, onAIStateChange, character, setCharacter, initialPlayerPos }) {
   const app = useApplication()
   
   // Physics engine
@@ -245,12 +346,9 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
   // Graphics refs
   const terrainRef = useRef(null)
   const particlesRef = useRef(null)
-  
-  // Load saved game
-  const savedGame = useMemo(() => loadGame(), [])
 
   // Game state
-  const [playerPos, setPlayerPos] = useState(savedGame?.playerPos || { x: 200, y: 0 })
+  const [playerPos, setPlayerPos] = useState(initialPlayerPos || { x: 200, y: 0 })
   const [facingRight, setFacingRight] = useState(true)
   const [isAttacking, setIsAttacking] = useState(false)
   const [isClimbing, setIsClimbing] = useState(false)
@@ -269,20 +367,6 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
   // Enemy sprites cache
   const enemySpritesRef = useRef(new Map())
   
-  // Character stats
-  const [character, setCharacter] = useState(savedGame?.character || {
-    level: 1,
-    xp: 0,
-    xpToNext: 100,
-    maxHealth: 100,
-    health: 100,
-    baseDamage: 10,
-    critChance: 0.1,
-    critMultiplier: 2,
-    attackSpeed: BASE_ATTACK_SPEED,
-    gold: 0,
-  })
-  
   // Refs for timing
   const keysPressed = useRef({ up: false, down: false, left: false, right: false, jump: false, attack: false })
   const jumpRequestedRef = useRef(false) // Persists until consumed by game loop
@@ -291,8 +375,6 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
   const lastAttackRef = useRef(0)
   const lastSpawnRef = useRef(0)
   const lastCleanupRef = useRef(0)
-  const lastStatsUpdateRef = useRef(0)
-  const lastDistanceUpdateRef = useRef(0)
   const attackTimeoutRef = useRef(null)
   
   // AI State Machine state (persisted between frames)
@@ -330,23 +412,10 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
     loadEnemySprites()
   }, [])
   
-  // Update parent with stats
+  // Update parent with player position for persistence
   useEffect(() => {
-    onStatsUpdate?.(character)
-  }, [character, onStatsUpdate])
-
-  // Persistence logic
-  const stateRef = useRef({ character, playerPos, selectedCharacter })
-  useEffect(() => {
-    stateRef.current = { character, playerPos, selectedCharacter }
-  }, [character, playerPos, selectedCharacter])
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      saveGame(stateRef.current)
-    }, 1000)
-    return () => clearInterval(timer)
-  }, [])
+    onStatsUpdate?.({ playerPos })
+  }, [playerPos, onStatsUpdate])
   
   // Update distance
   useEffect(() => {
@@ -439,6 +508,7 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
       })
       
       // Second pass: generate ladders with proper connectivity
+      // Track platform connectivity: which platform is at the top/bottom of each ladder
       levels.forEach((levelKey, levelIndex) => {
         const platform = chunkPlatforms[levelKey]
         if (!platform) return
@@ -457,6 +527,11 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
             worldX: ladderX,
             bottomHeight: PLATFORM_LEVELS['ground'],
             topHeight: PLATFORM_LEVELS[levelKey],
+            // Platform connectivity for AI pathfinding
+            topPlatformId: platform.id,
+            bottomPlatformId: null, // null means ground
+            topLevel: levelKey,
+            bottomLevel: 'ground',
           }
           newLadders.push(ladder)
           physics.addLadder(ladder)
@@ -478,6 +553,11 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
               worldX: ladderX,
               bottomHeight: PLATFORM_LEVELS[lowerLevelKey],
               topHeight: PLATFORM_LEVELS[levelKey],
+              // Platform connectivity for AI pathfinding
+              topPlatformId: platform.id,
+              bottomPlatformId: lowerPlatform.id,
+              topLevel: levelKey,
+              bottomLevel: lowerLevelKey,
             }
             newLadders.push(ladder)
             physics.addLadder(ladder)
@@ -495,6 +575,11 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
             worldX: ladderX,
             bottomHeight: PLATFORM_LEVELS['ground'],
             topHeight: PLATFORM_LEVELS[levelKey],
+            // Platform connectivity for AI pathfinding
+            topPlatformId: platform.id,
+            bottomPlatformId: null, // null means ground
+            topLevel: levelKey,
+            bottomLevel: 'ground',
           }
           newLadders.push(ladder)
           physics.addLadder(ladder)
@@ -536,6 +621,8 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
     let spawnX = spawnFromRight ? scrollOffset + width + 100 : scrollOffset - 100
     
     let canSpawn = preferredLevel === 'ground'
+    let spawnPlatformId = null // Track which platform the enemy is on (null = ground)
+    
     if (!canSpawn) {
       const nearbyPlatform = platforms.find(p => 
         p.level === preferredLevel && 
@@ -544,6 +631,7 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
       
       if (nearbyPlatform) {
         canSpawn = true
+        spawnPlatformId = nearbyPlatform.id
         // Spawn on the platform (random position within safe bounds)
         const margin = 20
         const minX = nearbyPlatform.worldX + margin
@@ -566,6 +654,7 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
       worldX: spawnX,
       platformHeight,
       platformLevel: preferredLevel,
+      platformId: spawnPlatformId, // Track platform for AI pathfinding
       hit: false,
       dying: false,
       patrolDirection: spawnFromRight ? -1 : 1,
@@ -726,8 +815,13 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
     // Generate world
     generatePlatformsAndLadders(playerPos.x + width)
     
-    // Check nearby ladder
-    const nearbyLadders = physics.getNearbyLadders(playerPos.x, playerPos.y)
+    // Get current physics position (playerPos state may be stale)
+    const currentPos = physics.getPlayerPosition()
+    const currentPlayerX = currentPos.x
+    const currentPlayerY = Math.max(0, currentPos.y)
+    
+    // Check nearby ladder using fresh physics position
+    const nearbyLadders = physics.getNearbyLadders(currentPlayerX, currentPlayerY)
     const ladder = nearbyLadders[0]
     setNearbyLadder(ladder)
     
@@ -835,10 +929,10 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
       if (nearbyLadders.length > 0 && !physics.isPlayerJumping()) {
         if (currentKeys.up) {
           // Find a ladder where we are NOT at the top
-          targetLadder = nearbyLadders.find(l => playerPos.y < l.topHeight - 5)
+          targetLadder = nearbyLadders.find(l => currentPlayerY < l.topHeight - 5)
         } else if (currentKeys.down) {
           // Find a ladder where we are NOT at the bottom
-          targetLadder = nearbyLadders.find(l => playerPos.y > l.bottomHeight + 5)
+          targetLadder = nearbyLadders.find(l => currentPlayerY > l.bottomHeight + 5)
         }
         
         // If we are already climbing and blocked in the requested direction, 
@@ -856,8 +950,8 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
         
         if (!isClimbing) {
           // Check start conditions to prevent immediate dismount/flicker
-          const atTop = playerPos.y >= activeLadder.topHeight - 5
-          const atBottom = playerPos.y <= activeLadder.bottomHeight + 5
+          const atTop = currentPlayerY >= activeLadder.topHeight - 5
+          const atBottom = currentPlayerY <= activeLadder.bottomHeight + 5
           
           const validEntry = (currentKeys.up && !atTop) || (currentKeys.down && !atBottom)
           
@@ -871,9 +965,9 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
         
         if (canClimb) {
           if (currentKeys.up) {
-            const targetY = playerPos.y + (CLIMB_SPEED * delta) / 1000
+            const targetY = currentPlayerY + (CLIMB_SPEED * delta) / 1000
             const newY = Math.min(activeLadder.topHeight, targetY)
-            physics.climbPlayer((newY - playerPos.y))
+            physics.climbPlayer((newY - currentPlayerY))
             moving = true
             
             // Auto-dismount when reaching the top of the ladder
@@ -882,9 +976,9 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
               physics.setPlayerClimbing(false)
             }
           } else if (currentKeys.down) {
-            const targetY = playerPos.y - (CLIMB_SPEED * delta) / 1000
+            const targetY = currentPlayerY - (CLIMB_SPEED * delta) / 1000
             const newY = Math.max(activeLadder.bottomHeight, targetY)
-            physics.climbPlayer((newY - playerPos.y))
+            physics.climbPlayer((newY - currentPlayerY))
             moving = true
             
             // Auto-dismount when reaching the bottom of the ladder
@@ -926,6 +1020,7 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
       let newWorldX = enemy.worldX
       let newAnimationTime = enemy.animationTime || 0
       let newAnimationFrame = enemy.animationFrame || 0
+      let newPatrolDirection = enemy.patrolDirection
       
       if (enemy.isPatrolling && enemy.platformLevel !== 'ground') {
         const currentPlatform = platforms.find(p => 
@@ -939,10 +1034,10 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
           newWorldX = enemy.worldX + (enemy.patrolDirection * moveSpeed * delta) / 1000
           
           if (newWorldX < currentPlatform.worldX + 20) {
-            enemy.patrolDirection = 1
+            newPatrolDirection = 1
             newWorldX = currentPlatform.worldX + 20
           } else if (newWorldX > currentPlatform.worldX + currentPlatform.width - 60) {
-            enemy.patrolDirection = -1
+            newPatrolDirection = -1
             newWorldX = currentPlatform.worldX + currentPlatform.width - 60
           }
           
@@ -962,15 +1057,44 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
           }
         }
       } else {
-        const dirToPlayer = playerPos.x > enemy.worldX ? 1 : -1
-        newWorldX = enemy.worldX + (dirToPlayer * enemy.speed * delta) / 1000
-        enemy.patrolDirection = dirToPlayer
+        // Chase player with gradual movement and rubber banding
+        const distanceToPlayer = playerPos.x - enemy.worldX
+        const absDistance = Math.abs(distanceToPlayer)
         
-        // Update animation
-        newAnimationTime += delta
-        if (newAnimationTime >= ANIMATION_FRAME_DURATION) {
-          newAnimationTime = 0
-          newAnimationFrame = (newAnimationFrame + 1) % 5
+        // Stop distance - enemies stop when they're close enough (prevents jitter)
+        const stopDistance = 30
+        // Slow-down zone - enemies start slowing down in this range
+        const slowDownDistance = 80
+        
+        if (absDistance > stopDistance) {
+          const dirToPlayer = distanceToPlayer > 0 ? 1 : -1
+          newPatrolDirection = dirToPlayer
+          
+          // Calculate speed with gradual slow-down (rubber band effect)
+          let speedMultiplier = 1.0
+          if (absDistance < slowDownDistance) {
+            // Ease out as we approach - creates smooth deceleration
+            const t = (absDistance - stopDistance) / (slowDownDistance - stopDistance)
+            speedMultiplier = t * t // Quadratic ease-out for smoother approach
+          }
+          
+          // Apply movement with interpolation for smoother motion
+          const targetMove = (dirToPlayer * enemy.speed * speedMultiplier * delta) / 1000
+          // Lerp factor for additional smoothing (0.7 = 70% toward target each frame)
+          const lerpFactor = 0.7
+          const smoothedMove = targetMove * lerpFactor
+          
+          newWorldX = enemy.worldX + smoothedMove
+        }
+        // If within stopDistance, enemy stays in place (no jitter)
+        
+        // Update animation only when moving
+        if (absDistance > stopDistance) {
+          newAnimationTime += delta
+          if (newAnimationTime >= ANIMATION_FRAME_DURATION) {
+            newAnimationTime = 0
+            newAnimationFrame = (newAnimationFrame + 1) % 5
+          }
         }
       }
       
@@ -978,6 +1102,7 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
         ...enemy, 
         worldX: newWorldX, 
         hit: false,
+        patrolDirection: newPatrolDirection,
         animationTime: newAnimationTime,
         animationFrame: newAnimationFrame,
       }
@@ -1161,6 +1286,9 @@ export const GameStage = memo(function GameStage({
   autoAttackEnabled,
   setAutoAttackEnabled,
   onAIStateChange,
+  character,
+  setCharacter,
+  initialPlayerPos,
 }) {
   return (
     <Application
@@ -1178,6 +1306,9 @@ export const GameStage = memo(function GameStage({
         autoAttackEnabled={autoAttackEnabled}
         setAutoAttackEnabled={setAutoAttackEnabled}
         onAIStateChange={onAIStateChange}
+        character={character}
+        setCharacter={setCharacter}
+        initialPlayerPos={initialPlayerPos}
       />
     </Application>
   )

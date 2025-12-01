@@ -1,9 +1,9 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import './App.css'
 import { GameStage, BIOMES, getBiomeForDistance } from './game'
 import { CharacterSelect } from './components'
 import { getCharacter, DEFAULT_CHARACTER } from './game/characters'
-import { loadGame } from './game/persistence'
+import { loadGame, saveGame, clearSave } from './game/persistence'
 
 // Game states
 const GAME_STATE = {
@@ -61,12 +61,26 @@ function App() {
     setGameState(GAME_STATE.PLAYING)
   }, [getInitialStats])
   
-  const [distance, setDistance] = useState(0)
-  const [kills, setKills] = useState(0)
+  // Handle new game - reset everything and go back to character select
+  const handleNewGame = useCallback(() => {
+    clearSave()
+    setSelectedCharacter(DEFAULT_CHARACTER)
+    setCharacter(getInitialStats(DEFAULT_CHARACTER))
+    setDistance(0)
+    setKills(0)
+    setPlayerPos({ x: 200, y: 0 })
+    setAutoAttackEnabled(false)
+    setGameState(GAME_STATE.CHARACTER_SELECT)
+  }, [getInitialStats])
+  
+  const [distance, setDistance] = useState(savedGame?.distance || 0)
+  const [kills, setKills] = useState(savedGame?.kills || 0)
   const [levelUpEffect, setLevelUpEffect] = useState(false)
   const [showUpgrades, setShowUpgrades] = useState(false)
-  const [autoAttackEnabled, setAutoAttackEnabled] = useState(false)
+  const [autoAttackEnabled, setAutoAttackEnabled] = useState(savedGame?.autoAttackEnabled || false)
+  const [showNewGameConfirm, setShowNewGameConfirm] = useState(false)
   const [aiState, setAIState] = useState(null)
+  const [playerPos, setPlayerPos] = useState(savedGame?.playerPos || { x: 200, y: 0 })
   
   // Handle window resize
   useEffect(() => {
@@ -89,21 +103,43 @@ function App() {
     }
   }, [])
   
-  // Stats update callback from game
-  const handleStatsUpdate = useCallback((stats) => {
-    const prevLevel = character.level
-    setCharacter(stats)
-    
-    if (stats.level > prevLevel) {
-      setLevelUpEffect(true)
-      setTimeout(() => setLevelUpEffect(false), 1500)
+  // Position update callback from game (for persistence)
+  const handleStatsUpdate = useCallback((data) => {
+    if (data.playerPos) {
+      setPlayerPos(data.playerPos)
     }
-  }, [character.level])
+  }, [])
   
   // Distance update callback
   const handleDistanceUpdate = useCallback((dist) => {
     setDistance(dist)
   }, [])
+
+  // Handle level-up effects
+  const prevLevelRef = useRef(character.level)
+  useEffect(() => {
+    if (character.level > prevLevelRef.current) {
+      setLevelUpEffect(true)
+      setTimeout(() => setLevelUpEffect(false), 1500)
+    }
+    prevLevelRef.current = character.level
+  }, [character.level])
+
+  // Persistence - save game state every second
+  const gameStateRef = useRef({ character, selectedCharacter, distance, kills, playerPos, autoAttackEnabled })
+  useEffect(() => {
+    gameStateRef.current = { character, selectedCharacter, distance, kills, playerPos, autoAttackEnabled }
+  }, [character, selectedCharacter, distance, kills, playerPos, autoAttackEnabled])
+
+  useEffect(() => {
+    if (gameState !== GAME_STATE.PLAYING) return
+    
+    const saveInterval = setInterval(() => {
+      saveGame(gameStateRef.current)
+    }, 1000)
+    
+    return () => clearInterval(saveInterval)
+  }, [gameState])
   
   // Kill callback
   const handleKill = useCallback(() => {
@@ -175,6 +211,9 @@ function App() {
         autoAttackEnabled={autoAttackEnabled}
         setAutoAttackEnabled={setAutoAttackEnabled}
         onAIStateChange={setAIState}
+        character={character}
+        setCharacter={setCharacter}
+        initialPlayerPos={playerPos}
       />
       
       {/* UI Overlay - Upgrades only now */}
@@ -206,7 +245,45 @@ function App() {
             ⚒️
           </button>
         )}
+        
+        {/* New Game Button */}
+        <button 
+          className="new-game-toggle" 
+          onClick={() => setShowNewGameConfirm(true)}
+          title="Start New Game"
+        >
+          🔄
+        </button>
       </div>
+      
+      {/* New Game Confirmation Modal */}
+      {showNewGameConfirm && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h3 className="modal-title">Start New Game?</h3>
+            <p className="modal-text">
+              This will erase all progress and return to the character select screen.
+            </p>
+            <div className="modal-buttons">
+              <button 
+                className="modal-button cancel" 
+                onClick={() => setShowNewGameConfirm(false)}
+              >
+                Cancel
+              </button>
+              <button 
+                className="modal-button confirm" 
+                onClick={() => {
+                  setShowNewGameConfirm(false)
+                  handleNewGame()
+                }}
+              >
+                New Game
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* Bottom HUD - Concise Level, HP, XP */}
       <div className="bottom-hud">

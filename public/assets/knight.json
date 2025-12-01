@@ -1,0 +1,152 @@
+{"frames": {
+
+"attack/attack_1.png":
+{
+	"frame": {"x":699,"y":783,"w":505,"h":689},
+	"rotated": true,
+	"trimmed": true,
+	"spriteSourceSize": {"x":4,"y":4,"w":505,"h":689},
+	"sourceSize": {"w":513,"h":697},
+	"anchor": {"x":0.727096,"y":0.979914}
+},
+"attack/attack_2.png":
+{
+	"frame": {"x":1390,"y":785,"w":664,"h":685},
+	"rotated": true,
+	"trimmed": true,
+	"spriteSourceSize": {"x":4,"y":4,"w":664,"h":685},
+	"sourceSize": {"w":672,"h":693},
+	"anchor": {"x":0.436012,"y":0.976912}
+},
+"attack/attack_3.png":
+{
+	"frame": {"x":2077,"y":788,"w":992,"h":687},
+	"rotated": false,
+	"trimmed": true,
+	"spriteSourceSize": {"x":4,"y":4,"w":992,"h":687},
+	"sourceSize": {"w":1000,"h":695},
+	"anchor": {"x":0.298,"y":0.979856}
+},
+"attack/attack_4.png":
+{
+	"frame": {"x":3071,"y":788,"w":862,"h":688},
+	"rotated": false,
+	"trimmed": true,
+	"spriteSourceSize": {"x":4,"y":4,"w":862,"h":688},
+	"sourceSize": {"w":870,"h":696},
+	"anchor": {"x":0.334483,"y":0.978448}
+},
+"attack/attack_5.png":
+{
+	"frame": {"x":1,"y":780,"w":446,"h":696},
+	"rotated": true,
+	"trimmed": true,
+	"spriteSourceSize": {"x":4,"y":4,"w":446,"h":696},
+	"sourceSize": {"w":454,"h":704},
+	"anchor": {"x":0.662996,"y":0.977273}
+},
+"climb/climb_1.png":
+{
+	"frame": {"x":2242,"y":1,"w":354,"h":745},
+	"rotated": true,
+	"trimmed": true,
+	"spriteSourceSize": {"x":4,"y":4,"w":354,"h":745},
+	"sourceSize": {"w":362,"h":753},
+	"anchor": {"x":0.516575,"y":0.984064}
+},
+"climb/climb_2.png":
+{
+	"frame": {"x":748,"y":1,"w":353,"h":745},
+	"rotated": true,
+	"trimmed": true,
+	"spriteSourceSize": {"x":4,"y":4,"w":353,"h":745},
+	"sourceSize": {"w":361,"h":753},
+	"anchor": {"x":0.498615,"y":0.98672}
+},
+"climb/climb_3.png":
+{
+	"frame": {"x":2989,"y":1,"w":354,"h":745},
+	"rotated": true,
+	"trimmed": true,
+	"spriteSourceSize": {"x":4,"y":4,"w":354,"h":745},
+	"sourceSize": {"w":362,"h":753},
+	"anchor": {"x":0.524862,"y":0.981408}
+},
+"climb/climb_5.png":
+{
+	"frame": {"x":1,"y":1,"w":348,"h":745},
+	"rotated": true,
+	"trimmed": true,
+	"spriteSourceSize": {"x":4,"y":4,"w":348,"h":745},
+	"sourceSize": {"w":356,"h":753},
+	"anchor": {"x":0.542135,"y":0.98008}
+},
+"climb/climb_6.png":
+{
+	"frame": {"x":1495,"y":1,"w":353,"h":745},
+	"rotated": true,
+	"trimmed": true,
+	"spriteSourceSize": {"x":4,"y":4,"w":353,"h":745},
+	"sourceSize": {"w":361,"h":753},
+	"anchor": {"x":0.526316,"y":0.98008}
+},
+"walking/walking_1.png":
+{
+	"frame": {"x":2987,"y":357,"w":429,"h":748},
+	"rotated": true,
+	"trimmed": true,
+	"spriteSourceSize": {"x":4,"y":4,"w":429,"h":748},
+	"sourceSize": {"w":437,"h":756},
+	"anchor": {"x":0.661327,"y":0.981481}
+},
+"walking/walking_2.png":
+{
+	"frame": {"x":2243,"y":357,"w":428,"h":742},
+	"rotated": true,
+	"trimmed": true,
+	"spriteSourceSize": {"x":4,"y":4,"w":428,"h":742},
+	"sourceSize": {"w":436,"h":750},
+	"anchor": {"x":0.66055,"y":0.988}
+},
+"walking/walking_3.png":
+{
+	"frame": {"x":1493,"y":357,"w":426,"h":748},
+	"rotated": true,
+	"trimmed": true,
+	"spriteSourceSize": {"x":4,"y":4,"w":426,"h":748},
+	"sourceSize": {"w":434,"h":756},
+	"anchor": {"x":0.652074,"y":0.98545}
+},
+"walking/walking_4.png":
+{
+	"frame": {"x":1,"y":351,"w":427,"h":739},
+	"rotated": true,
+	"trimmed": true,
+	"spriteSourceSize": {"x":4,"y":4,"w":427,"h":739},
+	"sourceSize": {"w":435,"h":747},
+	"anchor": {"x":0.671264,"y":0.986613}
+},
+"walking/walking_5.png":
+{
+	"frame": {"x":742,"y":356,"w":425,"h":749},
+	"rotated": true,
+	"trimmed": true,
+	"spriteSourceSize": {"x":4,"y":4,"w":425,"h":749},
+	"sourceSize": {"w":433,"h":757},
+	"anchor": {"x":0.669746,"y":0.980185}
+}},
+"animations": {
+	"attack/attack": ["attack/attack_1.png","attack/attack_2.png","attack/attack_3.png","attack/attack_4.png","attack/attack_5.png"],
+	"climb/climb": ["climb/climb_1.png","climb/climb_2.png","climb/climb_3.png","climb/climb_5.png","climb/climb_6.png"],
+	"walking/walking": ["walking/walking_1.png","walking/walking_2.png","walking/walking_3.png","walking/walking_4.png","walking/walking_5.png"]
+},
+"meta": {
+	"app": "https://www.codeandweb.com/texturepacker",
+	"version": "1.1",
+	"image": "knight.png",
+	"format": "RGBA8888",
+	"size": {"w":3934,"h":1477},
+	"scale": "1",
+	"smartupdate": "$TexturePacker:SmartUpdate:bf6b6c129a98e2f95c1ecc016accc5d6:e0d1f5c191550eca51e8c33c2b19d5c4:775abec68cea152a8c833d779d2191cb$"
+}
+}

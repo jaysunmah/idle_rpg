@@ -1,6 +1,5 @@
 import sys
 import argparse
-import shutil
 from pathlib import Path
 from PIL import Image
 import numpy as np
@@ -550,7 +549,7 @@ def process_spritesheet(
     
     Args:
         input_path: Path to input spritesheet image
-        output_dir: Directory to save outputs (transparent image + frames subfolder)
+        output_dir: Directory to save extracted frames
         num_frames: Number of frames to detect using k-means clustering
         target_color: Background color to remove (default: red)
         tolerance: Color tolerance for background removal
@@ -568,39 +567,27 @@ def process_spritesheet(
     # Ensure output directory exists
     output_dir.mkdir(parents=True, exist_ok=True)
     
-    # Copy input image to output directory
-    input_copy_path = output_dir / input_path.name
-    shutil.copy2(input_path, input_copy_path)
-    print(f"Copied input image to {input_copy_path}")
-    
-    # Step 1: Remove background
+    # Remove background
     print("Removing background...")
     data = np.array(img)
     data = remove_background(data, target_color, tolerance)
     result = Image.fromarray(data)
     
-    # Save transparent image to output directory
-    transparent_path = output_dir / "transparent.png"
-    result.save(transparent_path)
-    print(f"Saved transparent image to {transparent_path}")
-    
-    # Step 2: Extract frames
+    # Extract frames
     frames = detect_and_extract_frames(result, merge_distance=merge_distance, padding=padding, num_frames=num_frames)
     
     if not frames:
         print("Warning: No frames detected!")
         return result, []
     
-    # Save frames to frames subdirectory
-    frames_dir = output_dir / "frames"
-    frames_dir.mkdir(parents=True, exist_ok=True)
-    print(f"\nExtracting {len(frames)} frames to {frames_dir}/")
+    # Save frames directly to output directory
+    print(f"\nExtracting {len(frames)} frames to {output_dir}/")
     print("-" * 40)
     
     saved_paths = []
     for i, (bbox, frame_img) in enumerate(frames):
         filename = f"frame_{i+1}.png"
-        frame_path = frames_dir / filename
+        frame_path = output_dir / filename
         frame_img.save(frame_path)
         
         w, h = frame_img.size
@@ -628,20 +615,18 @@ Examples:
 
 Output structure:
   ./output/
-    transparent.png    # Background-removed spritesheet
-    frames/
-      frame_1.png
-      frame_2.png
-      ...
+    frame_1.png
+    frame_2.png
+    ...
 """
     )
     parser.add_argument("input_image", type=Path,
                         help="Path to the input image file")
     parser.add_argument("output_dir", type=Path,
-                        help="Directory to save outputs (transparent.png + frames/ subfolder)")
+                        help="Directory to save extracted frames")
     parser.add_argument("num_frames", type=int,
                         help="Number of frames to detect using k-means clustering")
-    parser.add_argument("-t", "--tolerance", type=int, default=30,
+    parser.add_argument("-t", "--tolerance", type=int, default=50,
                         help="Color tolerance for background removal (default: 30)")
     parser.add_argument("-m", "--merge-distance", type=int, default=10,
                         help="Max distance to merge nearby components (default: 10)")

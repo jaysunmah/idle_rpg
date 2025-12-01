@@ -161,7 +161,7 @@ export class PhysicsEngine {
   }
   
   // Check if player is near a ladder
-  getNearbyLadders(playerX, playerY, tolerance = 10) {
+  getNearbyLadders(playerX, playerY, tolerance = 30) {
     return this.ladders.filter(ladder => {
       const isNearX = Math.abs(ladder.worldX - playerX) < tolerance
       // More forgiving Y range check:

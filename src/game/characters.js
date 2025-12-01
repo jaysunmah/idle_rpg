@@ -23,6 +23,27 @@ export const CHARACTER_TYPES = {
     },
     color: '#4488ff',
   },
+  'knight': {
+    id: 'knight',
+    name: 'Knight',
+    description: 'A heavily armored warrior. High damage but slower attacks.',
+    spriteSheet: {
+      json: '/assets/knight.json',
+      image: '/assets/knight.png',
+      animations: {
+        walk: 'walking/walking',
+        attack: 'attack/attack',
+        climb: 'climb/climb',
+      },
+    },
+    stats: {
+      damageMultiplier: 1.3,
+      attackSpeedMultiplier: 0.8,
+      critChanceBonus: 0.05,
+      attackRange: 120,
+    },
+    color: '#c0c0c0',
+  },
 }
 
 // Default character
