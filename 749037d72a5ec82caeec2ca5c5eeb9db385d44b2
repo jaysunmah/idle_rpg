@@ -12,7 +12,7 @@ Conversations:
 [1]: a52faf99-5d2c-4d91-8035-c78bc9371187; Incorporate beginner adventurer walking sprite; gemini-3-pro;
 [2]: d0484f20-4bf3-4a5b-9adc-a09ec32dd76b; Implement manual attack mechanism; gemini-3-pro;
 [3]: 8f8779f5-73b3-41fc-98cd-e348a2988bb6; Implement persistent storage for game data; gemini-3-pro;
-[4]: db5b7de3-d2f5-4d13-9adb-4d462fc3d49e; Replace wolf sprite with new sheet; claude-4.5-opus-high-thinking;
+[4]: 649e97eb-6ecc-47b5-b35f-55f110e793dd; Character facing bug in auto attack; gemini-3-pro;
 [5]: 6791e4df-a3df-4a51-a7d0-8ed739e00987; Damage all mobs in range; gemini-3-pro;
 [6]: 8b8fd36b-01d1-42ca-adc5-6da914fc1cb0; Fix auto attack logic for platforms; claude-4.5-opus-high-thinking;
 [7]: dff6ab38-6258-4ab3-887a-86c3a0395247; Fix bugs in ladder climbing; gemini-3-pro;
