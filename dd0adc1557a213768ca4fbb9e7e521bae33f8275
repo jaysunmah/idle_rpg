@@ -24,7 +24,7 @@ Conversations:
 [10]: 68042637-9682-4465-821a-7fd0d7c1ae65; Fix AI climbing behavior in auto-attack; gemini-3-pro;
 [11]: 68bc7f15-1e22-4c61-8059-706a96325c57; Examine auto attack logic; claude-4.5-opus-high-thinking;
 [12]: 8b8fd36b-01d1-42ca-adc5-6da914fc1cb0; Fix auto attack logic for platforms; claude-4.5-opus-high-thinking;
-[13]: db5b7de3-d2f5-4d13-9adb-4d462fc3d49e; Replace wolf sprite with new sheet; claude-4.5-opus-high-thinking;
+[13]: 649e97eb-6ecc-47b5-b35f-55f110e793dd; Character facing bug in auto attack; gemini-3-pro;
 [14]: e62b33ce-666f-4d02-8b9e-387f79c3d406; Remove climb helper tooltips; gemini-3-pro;
 [15]: e5af8191-7f4e-467f-84ff-ace8f621b95f; Adjust platform height and character size; gemini-3-pro;
 [16]: dff6ab38-6258-4ab3-887a-86c3a0395247; Fix bugs in ladder climbing; gemini-3-pro;
