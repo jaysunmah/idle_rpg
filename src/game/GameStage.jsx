@@ -625,29 +625,111 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
     if (autoAttackEnabled) {
       // Find nearest reachable enemy
       const target = enemies
-        .filter(e => !e.dying && Math.abs(e.platformHeight - playerPos.y) < 100)
-        .sort((a, b) => Math.abs(a.worldX - playerPos.x) - Math.abs(b.worldX - playerPos.x))[0]
+        .filter(e => !e.dying)
+        .sort((a, b) => {
+           // Weighted distance: horizontal + vertical * 2 (prioritize nearby first, then reachable vertical)
+           const distA = Math.abs(a.worldX - playerPos.x) + Math.abs(a.platformHeight - playerPos.y) * 2
+           const distB = Math.abs(b.worldX - playerPos.x) + Math.abs(b.platformHeight - playerPos.y) * 2
+           return distA - distB
+        })[0]
 
       if (target) {
         const dx = target.worldX - playerPos.x
-        const dist = Math.abs(dx)
-        const inRange = dist <= ATTACK_RANGE * 0.8 // Move slightly closer than max range
-
-        if (inRange) {
-           // Stop moving and attack
-           currentKeys.left = false
-           currentKeys.right = false
-           currentKeys.attack = true
-        } else {
-           // Move towards enemy
-           if (dx > 0) {
-             currentKeys.right = true
+        const dy = target.platformHeight - playerPos.y
+        const absDx = Math.abs(dx)
+        const absDy = Math.abs(dy)
+        
+        const isSameLevel = absDy < 50
+        
+        if (isSameLevel) {
+          // Horizontal movement and attack logic
+          const inRange = absDx <= ATTACK_RANGE * 0.8
+  
+          if (inRange) {
+             // Stop moving and attack
              currentKeys.left = false
-           } else {
-             currentKeys.left = true
              currentKeys.right = false
-           }
-           currentKeys.attack = false
+             currentKeys.attack = true
+          } else {
+             // Move towards enemy
+             if (dx > 0) {
+               currentKeys.right = true
+               currentKeys.left = false
+             } else {
+               currentKeys.left = true
+               currentKeys.right = false
+             }
+             currentKeys.attack = false
+          }
+        } else {
+          // Vertical movement needed
+          currentKeys.attack = false
+          
+          if (isClimbing) {
+            // We are on a ladder, climb towards target level
+            if (dy > 0) {
+              currentKeys.up = true
+              currentKeys.down = false
+            } else {
+              currentKeys.down = true
+              currentKeys.up = false
+            }
+            
+            // If we're close to target level, try to dismount towards target
+            if (absDy < 20) {
+               if (dx > 0) currentKeys.right = true
+               else currentKeys.left = true
+            }
+          } else {
+            // Find a ladder that helps us change level
+            // We need a ladder that connects our current Y to the target Y direction
+            // Sort ladders by proximity
+            const usefulLadder = ladders
+              .filter(l => {
+                // Check if ladder is accessible from current Y (with some tolerance)
+                const isAccessible = playerPos.y >= l.bottomHeight - 10 && playerPos.y <= l.topHeight + 10
+                if (!isAccessible) return false
+                
+                // Check if ladder goes in the right direction
+                if (dy > 0) { // Target is above
+                   return l.topHeight > playerPos.y + 20
+                } else { // Target is below
+                   return l.bottomHeight < playerPos.y - 20
+                }
+              })
+              .sort((a, b) => Math.abs(a.worldX - playerPos.x) - Math.abs(b.worldX - playerPos.x))[0]
+            
+            if (usefulLadder) {
+               const ladderDx = usefulLadder.worldX - playerPos.x
+               
+               if (Math.abs(ladderDx) < 10) {
+                 // At ladder, start climbing
+                 if (dy > 0) currentKeys.up = true
+                 else currentKeys.down = true
+                 // Stop horizontal movement to snap/climb
+                 currentKeys.left = false
+                 currentKeys.right = false
+               } else {
+                 // Move to ladder
+                 if (ladderDx > 0) {
+                   currentKeys.right = true
+                   currentKeys.left = false
+                 } else {
+                   currentKeys.left = true
+                   currentKeys.right = false
+                 }
+               }
+            } else {
+               // No useful ladder found, maybe just move horizontally towards target as fallback
+               if (dx > 0) {
+                 currentKeys.right = true
+                 currentKeys.left = false
+               } else {
+                 currentKeys.left = true
+                 currentKeys.right = false
+               }
+            }
+          }
         }
       }
     }
@@ -939,7 +1021,7 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
     }
     // Character sprite is now managed via ref, no drawing needed
     
-  }, [playerPos, isClimbing, isMoving, isAttacking, isJumping, isFalling, facingRight, platforms, generatePlatformsAndLadders, spawnEnemy, attackEnemy, character.attackSpeed, width, height, scrollOffset, currentBiome])
+  }, [playerPos, isClimbing, isMoving, isAttacking, isJumping, isFalling, facingRight, platforms, generatePlatformsAndLadders, spawnEnemy, attackEnemy, character.attackSpeed, width, height, scrollOffset, currentBiome, autoAttackEnabled, enemies, ladders])
   
   useGameLoop(gameUpdate)
   
