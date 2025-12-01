@@ -6,4 +6,4 @@ Conversations:
 
 [0]: 6af31df4-95a8-4a0a-8602-25182ddfe1db; Implement auto-attack mode for characters; gemini-3-pro;
 [1]: 68042637-9682-4465-821a-7fd0d7c1ae65; Fix AI climbing behavior in auto-attack; gemini-3-pro;
-[2]: 6512ee70-ddd4-4b5d-ad42-597da65f3acc; Remove code related to Pet.jsx; gemini-3-pro;
+[2]: f6e9deb2-27fe-4b95-85a9-cc799dca4f81; Bug in AI ladder climbing loop; gemini-3-pro;
