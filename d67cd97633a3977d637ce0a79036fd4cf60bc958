@@ -1,8 +1,9 @@
 AI Notes:
 
-src/game/GameStage.jsx: +628-634[0],+638-640[0],+642[0],+644-646[0],+648-649[0],+652-666[0],+668-676[0],+678-691[0],+693-700[0],+702-703[0],+705-732[0],+1024[0] -641[1],-646[1],-649[1],-942[0]
+src/game/GameStage.jsx: +628-634[0],+638-640[0],+642[0],+644-646[0],+648-649[0],+652-666[0],+668-676[0],+678-691[0],+693-700[0],+702-703[0],+705-732[0],+1024[0] -641[1],-646[1],-649[2],-942[0]
 
 Conversations:
 
 [0]: 6af31df4-95a8-4a0a-8602-25182ddfe1db; Implement auto-attack mode for characters; gemini-3-pro;
 [1]: dff6ab38-6258-4ab3-887a-86c3a0395247; Fix bugs in ladder climbing; gemini-3-pro;
+[2]: 68042637-9682-4465-821a-7fd0d7c1ae65; Fix AI climbing behavior in auto-attack; gemini-3-pro;
