@@ -1,6 +1,6 @@
 import { Application, extend, useApplication } from '@pixi/react'
 import { Container, Graphics, Text, Sprite, Assets } from 'pixi.js'
-import { useRef, useState, useEffect, useCallback, useMemo } from 'react'
+import { useRef, useState, useEffect, useCallback, useMemo, memo } from 'react'
 import {
   BIOMES,
   getBiomeForDistance,
@@ -37,6 +37,10 @@ const PET_FOLLOW_DISTANCE = 60 // Base distance behind for first pet
 const PET_SPACING = 40 // Additional spacing between each pet
 const PET_FOLLOW_SPEED = 0.08 // How quickly pet catches up (lerp factor)
 
+const MAX_ENEMIES = 10
+const CLEANUP_INTERVAL = 2000 // ms
+const UNRENDER_DISTANCE = 2000 // px behind scrollOffset
+
 // XP calculation
 const xpForLevel = (level) => Math.floor(100 * Math.pow(1.5, level - 1))
 
@@ -70,6 +74,7 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
   const [isJumping, setIsJumping] = useState(false)
   const [isFalling, setIsFalling] = useState(false)
   const [nearbyLadder, setNearbyLadder] = useState(null)
+  const [autoAttackEnabled, setAutoAttackEnabled] = useState(false)
   
   // Pets state - array of pet objects
   const [pets, setPets] = useState([
@@ -157,6 +162,9 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
   const lastPlatformChunkRef = useRef(0)
   const lastAttackRef = useRef(0)
   const lastSpawnRef = useRef(0)
+  const lastCleanupRef = useRef(0)
+  const lastStatsUpdateRef = useRef(0)
+  const lastDistanceUpdateRef = useRef(0)
   const attackTimeoutRef = useRef(null)
   
   // Use a ref for addPet to avoid re-binding event listeners
@@ -255,6 +263,10 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
           return prevPets
         })
       }
+      // Toggle Auto-Attack with 'R'
+      if (e.key === 'r' || e.key === 'R') {
+        setAutoAttackEnabled(prev => !prev)
+      }
     }
     
     const handleKeyUp = (e) => {
@@ -314,67 +326,55 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
       })
       
       // Second pass: generate ladders with proper connectivity
-      // For each platform, check if we can create an accessible ladder to it
       levels.forEach((levelKey, levelIndex) => {
         const platform = chunkPlatforms[levelKey]
         if (!platform) return
         
-        // Determine the lower level
         const lowerLevelKey = levelIndex === 0 ? 'ground' : levels[levelIndex - 1]
         const lowerPlatform = chunkPlatforms[lowerLevelKey]
         
-        // Only create ladder if there's something to stand on below
-        // For level1: ground is always accessible
-        // For level2+: need a platform at the level below in this chunk
-        const canCreateLadder = lowerLevelKey === 'ground' || lowerPlatform
+        let ladderCreated = false
         
-        if (canCreateLadder && seededRandom(chunk * 47 + levelIndex * 61) < 0.7) {
-          let ladderX
-          
-          if (lowerLevelKey === 'ground') {
-            // Ladder from ground - place within the upper platform bounds
-            ladderX = platform.worldX + platform.width * (0.2 + seededRandom(chunk * 59 + levelIndex * 67) * 0.6)
-          } else {
-            // Ladder from lower platform - place where both platforms overlap
-            const overlapStart = Math.max(platform.worldX, lowerPlatform.worldX)
-            const overlapEnd = Math.min(
-              platform.worldX + platform.width,
-              lowerPlatform.worldX + lowerPlatform.width
-            )
-            
-            // Only create ladder if there's sufficient overlap (at least 40px)
-            if (overlapEnd - overlapStart < 40) return
-            
-            // Place ladder in the overlapping region
-            const overlapWidth = overlapEnd - overlapStart
-            ladderX = overlapStart + overlapWidth * (0.2 + seededRandom(chunk * 59 + levelIndex * 67) * 0.6)
-          }
-          
+        // Try to connect to the immediate lower level
+        if (lowerLevelKey === 'ground') {
+          // Always connect level1 to ground
+          const ladderX = platform.worldX + platform.width * (0.2 + seededRandom(chunk * 59 + levelIndex * 67) * 0.6)
           const ladder = {
             id: generateId(),
             worldX: ladderX,
-            bottomHeight: PLATFORM_LEVELS[lowerLevelKey],
+            bottomHeight: PLATFORM_LEVELS['ground'],
             topHeight: PLATFORM_LEVELS[levelKey],
           }
           newLadders.push(ladder)
           physics.addLadder(ladder)
+          ladderCreated = true
+        } else if (lowerPlatform) {
+          // Check for overlap with lower platform
+          const overlapStart = Math.max(platform.worldX, lowerPlatform.worldX)
+          const overlapEnd = Math.min(
+            platform.worldX + platform.width,
+            lowerPlatform.worldX + lowerPlatform.width
+          )
+          
+          if (overlapEnd - overlapStart >= 40) {
+            const overlapWidth = overlapEnd - overlapStart
+            const ladderX = overlapStart + overlapWidth * (0.2 + seededRandom(chunk * 59 + levelIndex * 67) * 0.6)
+            
+            const ladder = {
+              id: generateId(),
+              worldX: ladderX,
+              bottomHeight: PLATFORM_LEVELS[lowerLevelKey],
+              topHeight: PLATFORM_LEVELS[levelKey],
+            }
+            newLadders.push(ladder)
+            physics.addLadder(ladder)
+            ladderCreated = true
+          }
         }
-      })
-      
-      // Additional: Create "stacking" ladders when we have level2+ without lower platform
-      // These ladders will extend from ground all the way up
-      levels.forEach((levelKey, levelIndex) => {
-        if (levelIndex === 0) return // level1 already handled
         
-        const platform = chunkPlatforms[levelKey]
-        if (!platform) return
-        
-        const lowerLevelKey = levels[levelIndex - 1]
-        const lowerPlatform = chunkPlatforms[lowerLevelKey]
-        
-        // If there's no lower platform but we have this platform,
-        // create a direct ladder from ground (only for level2 to keep it reasonable)
-        if (!lowerPlatform && levelKey === 'level2' && seededRandom(chunk * 71 + levelIndex * 83) < 0.5) {
+        // If we couldn't connect to the layer below (missing platform or no overlap),
+        // we MUST connect to ground to ensure accessibility
+        if (!ladderCreated) {
           const ladderX = platform.worldX + platform.width * (0.3 + seededRandom(chunk * 89 + levelIndex * 97) * 0.4)
           
           const ladder = {
@@ -392,23 +392,17 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
     }
     
     if (newPlatforms.length > 0) {
-      setPlatforms(prev => {
-        const toRemove = prev.filter(p => p.worldX < scrollOffset - 800)
-        toRemove.forEach(p => physics.removePlatform(p.id))
-        return [...prev.filter(p => p.worldX > scrollOffset - 800), ...newPlatforms]
-      })
+      setPlatforms(prev => [...prev, ...newPlatforms])
     }
     if (newLadders.length > 0) {
-      setLadders(prev => {
-        const toRemove = prev.filter(l => l.worldX < scrollOffset - 800)
-        toRemove.forEach(l => physics.removeLadder(l.id))
-        return [...prev.filter(l => l.worldX > scrollOffset - 800), ...newLadders]
-      })
+      setLadders(prev => [...prev, ...newLadders])
     }
-  }, [scrollOffset])
+  }, [])
   
   // Spawn enemy
   const spawnEnemy = useCallback(() => {
+    if (enemies.length >= MAX_ENEMIES) return
+
     const physics = physicsRef.current
     if (!physics) return
     
@@ -426,7 +420,7 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
     const platformHeight = PLATFORM_LEVELS[preferredLevel]
     
     const spawnFromRight = Math.random() > 0.3
-    const spawnX = spawnFromRight ? scrollOffset + width + 100 : scrollOffset - 100
+    let spawnX = spawnFromRight ? scrollOffset + width + 100 : scrollOffset - 100
     
     let canSpawn = preferredLevel === 'ground'
     if (!canSpawn) {
@@ -434,7 +428,15 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
         p.level === preferredLevel && 
         Math.abs(p.worldX + p.width / 2 - spawnX) < 400
       )
-      canSpawn = !!nearbyPlatform
+      
+      if (nearbyPlatform) {
+        canSpawn = true
+        // Spawn on the platform (random position within safe bounds)
+        const margin = 20
+        const minX = nearbyPlatform.worldX + margin
+        const maxX = nearbyPlatform.worldX + nearbyPlatform.width - margin
+        spawnX = minX + Math.random() * (maxX - minX)
+      }
     }
     
     if (!canSpawn && preferredLevel !== 'ground') return
@@ -460,7 +462,7 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
     }
     
     setEnemies(prev => [...prev, newEnemy])
-  }, [playerPos.x, platforms, scrollOffset, width])
+  }, [playerPos.x, platforms, scrollOffset, width, enemies.length])
   
   // Attack enemy
   const attackEnemy = useCallback(() => {
@@ -581,13 +583,75 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
     
     const now = Date.now()
     
+    // Periodic cleanup of off-screen entities
+    if (now - lastCleanupRef.current > CLEANUP_INTERVAL) {
+      lastCleanupRef.current = now
+      
+      const unrenderLimit = scrollOffset - UNRENDER_DISTANCE
+      
+      // Cleanup platforms
+      setPlatforms(prev => {
+        const toRemove = prev.filter(p => p.worldX < unrenderLimit)
+        if (toRemove.length > 0) {
+          toRemove.forEach(p => physics.removePlatform(p.id))
+          return prev.filter(p => p.worldX >= unrenderLimit)
+        }
+        return prev
+      })
+
+      // Cleanup ladders
+      setLadders(prev => {
+        const toRemove = prev.filter(l => l.worldX < unrenderLimit)
+        if (toRemove.length > 0) {
+          toRemove.forEach(l => physics.removeLadder(l.id))
+          return prev.filter(l => l.worldX >= unrenderLimit)
+        }
+        return prev
+      })
+    }
+    
     // Generate world
     generatePlatformsAndLadders(playerPos.x + width)
     
     // Check nearby ladder
-    const ladder = physics.getNearbyLadder(playerPos.x, playerPos.y)
+    const nearbyLadders = physics.getNearbyLadders(playerPos.x, playerPos.y)
+    const ladder = nearbyLadders[0]
     setNearbyLadder(ladder)
     
+    // Copy keysPressed to a local mutable object so we can override it for Auto-Attack
+    const currentKeys = { ...keysPressed.current }
+
+    // Auto-Attack Logic
+    if (autoAttackEnabled) {
+      // Find nearest reachable enemy
+      const target = enemies
+        .filter(e => !e.dying && Math.abs(e.platformHeight - playerPos.y) < 100)
+        .sort((a, b) => Math.abs(a.worldX - playerPos.x) - Math.abs(b.worldX - playerPos.x))[0]
+
+      if (target) {
+        const dx = target.worldX - playerPos.x
+        const dist = Math.abs(dx)
+        const inRange = dist <= ATTACK_RANGE * 0.8 // Move slightly closer than max range
+
+        if (inRange) {
+           // Stop moving and attack
+           currentKeys.left = false
+           currentKeys.right = false
+           currentKeys.attack = true
+        } else {
+           // Move towards enemy
+           if (dx > 0) {
+             currentKeys.right = true
+             currentKeys.left = false
+           } else {
+             currentKeys.left = true
+             currentKeys.right = false
+           }
+           currentKeys.attack = false
+        }
+      }
+    }
+
     // Handle movement
     let moving = false
     const isGrounded = physics.isPlayerGrounded()
@@ -598,7 +662,7 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
     }
     
     // Check for jump request (persists until consumed, unlike keysPressed which resets on keyup)
-    const wantsToJump = jumpRequestedRef.current || keysPressed.current.jump
+    const wantsToJump = jumpRequestedRef.current || currentKeys.jump
     
     if (wantsToJump && jumpCooldownRef.current <= 0) {
       jumpRequestedRef.current = false // Consume the jump request
@@ -617,8 +681,8 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
     }
     
     // Horizontal movement (allowed while climbing if you want to dismount)
-    if (keysPressed.current.left) {
-      if (isClimbing && ladder) {
+    if (currentKeys.left) {
+      if (isClimbing && ladder && !currentKeys.up && !currentKeys.down) {
         // Dismount ladder to the left
         setIsClimbing(false)
         physics.setPlayerClimbing(false)
@@ -627,8 +691,8 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
       setFacingRight(false)
       moving = true
     }
-    if (keysPressed.current.right) {
-      if (isClimbing && ladder) {
+    if (currentKeys.right) {
+      if (isClimbing && ladder && !currentKeys.up && !currentKeys.down) {
         // Dismount ladder to the right
         setIsClimbing(false)
         physics.setPlayerClimbing(false)
@@ -639,38 +703,81 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
     }
     
     // Climbing
-    if ((keysPressed.current.up || keysPressed.current.down) && !keysPressed.current.jump) {
-      if (ladder && !physics.isPlayerJumping()) {
-        if (!isClimbing) {
-          setIsClimbing(true)
-          physics.setPlayerClimbing(true)
+    if ((currentKeys.up || currentKeys.down) && !currentKeys.jump) {
+      // Find the best ladder for the intended direction
+      let targetLadder = null
+      
+      if (isClimbing) {
+         // If we are already climbing, we should verify if we are still on a valid ladder
+         // (though usually we stick to one, but at junctions we might switch)
+         // For simplicity, we can re-evaluate nearby ladders or stick to the current one if valid
+         // But we don't track 'currentLadderId'. Rely on geometry.
+      }
+
+      if (nearbyLadders.length > 0 && !physics.isPlayerJumping()) {
+        if (currentKeys.up) {
+          // Find a ladder where we are NOT at the top
+          targetLadder = nearbyLadders.find(l => playerPos.y < l.topHeight - 5)
+        } else if (currentKeys.down) {
+          // Find a ladder where we are NOT at the bottom
+          targetLadder = nearbyLadders.find(l => playerPos.y > l.bottomHeight + 5)
         }
         
-        if (keysPressed.current.up) {
-          const targetY = playerPos.y + (CLIMB_SPEED * delta) / 1000
-          const newY = Math.min(ladder.topHeight, targetY)
-          physics.climbPlayer((newY - playerPos.y))
-          moving = true
+        // If we are already climbing and blocked in the requested direction, 
+        // we might want to default to *any* ladder to handle the "stop at top/bottom" logic
+        // or dismount logic.
+        if (!targetLadder && isClimbing) {
+           targetLadder = nearbyLadders[0]
+        }
+      }
+      
+      const activeLadder = targetLadder
+
+      if (activeLadder && !physics.isPlayerJumping()) {
+        let canClimb = isClimbing
+        
+        if (!isClimbing) {
+          // Check start conditions to prevent immediate dismount/flicker
+          const atTop = playerPos.y >= activeLadder.topHeight - 5
+          const atBottom = playerPos.y <= activeLadder.bottomHeight + 5
           
-          // Auto-dismount when reaching the top of the ladder
-          if (newY >= ladder.topHeight - 1) {
-            setIsClimbing(false)
-            physics.setPlayerClimbing(false)
+          const validEntry = (currentKeys.up && !atTop) || (currentKeys.down && !atBottom)
+          
+          if (validEntry) {
+            setIsClimbing(true)
+            physics.setPlayerClimbing(true)
+            physics.snapToLadder(activeLadder.worldX)
+            canClimb = true
           }
-        } else if (keysPressed.current.down) {
-          const targetY = playerPos.y - (CLIMB_SPEED * delta) / 1000
-          const newY = Math.max(ladder.bottomHeight, targetY)
-          physics.climbPlayer((newY - playerPos.y))
-          moving = true
-          
-          // Auto-dismount when reaching the bottom of the ladder
-          if (newY <= ladder.bottomHeight + 1) {
-            setIsClimbing(false)
-            physics.setPlayerClimbing(false)
+        }
+        
+        if (canClimb) {
+          if (currentKeys.up) {
+            const targetY = playerPos.y + (CLIMB_SPEED * delta) / 1000
+            const newY = Math.min(activeLadder.topHeight, targetY)
+            physics.climbPlayer((newY - playerPos.y))
+            moving = true
+            
+            // Auto-dismount when reaching the top of the ladder
+            if (newY >= activeLadder.topHeight - 1) {
+              setIsClimbing(false)
+              physics.setPlayerClimbing(false)
+            }
+          } else if (currentKeys.down) {
+            const targetY = playerPos.y - (CLIMB_SPEED * delta) / 1000
+            const newY = Math.max(activeLadder.bottomHeight, targetY)
+            physics.climbPlayer((newY - playerPos.y))
+            moving = true
+            
+            // Auto-dismount when reaching the bottom of the ladder
+            if (newY <= activeLadder.bottomHeight + 1) {
+              setIsClimbing(false)
+              physics.setPlayerClimbing(false)
+            }
           }
         }
       }
-    } else if (!keysPressed.current.up && !keysPressed.current.down && isClimbing && !keysPressed.current.left && !keysPressed.current.right) {
+    } else if (!currentKeys.up && !currentKeys.down && isClimbing && !currentKeys.left && !currentKeys.right) {
       // Keep climbing state if not pressing any direction
     }
     
@@ -776,6 +883,14 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
             newAnimationTime = 0
             newAnimationFrame = (newAnimationFrame + 1) % 5
           }
+        } else {
+          // Platform lost - fall to ground
+          return {
+            ...enemy,
+            isPatrolling: false,
+            platformLevel: 'ground',
+            platformHeight: 0,
+          }
         }
       } else {
         const dirToPlayer = playerPos.x > enemy.worldX ? 1 : -1
@@ -805,8 +920,8 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
       spawnEnemy()
     }
     
-    // Manual attack
-    if (keysPressed.current.attack && now - lastAttackRef.current > character.attackSpeed) {
+    // Manual attack (or Auto-Attack)
+    if (currentKeys.attack && now - lastAttackRef.current > character.attackSpeed) {
       lastAttackRef.current = now
       attackEnemy()
     }
@@ -876,7 +991,7 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
         const enemyHeight = ENEMY_TYPES[enemy.type].height
         const enemyWidth = ENEMY_TYPES[enemy.type].width
         // Bats hover above ground, other enemies need offset to align base with platform surface
-        const yOffset = enemy.type === 'bat' ? -enemyHeight * 0.3 : 20
+        const yOffset = enemy.type === 'bat' ? -enemyHeight * 0.3 : 0
         
         // Get sprite frames for this enemy type
         const enemyFrames = enemySpritesRef.current.get(enemy.type)
@@ -916,6 +1031,39 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
           />
         )
       })}
+      
+      {/* Climb indicator */}
+      {!!nearbyLadder && !isClimbing && (
+        <pixiText
+          text="↑↓ Climb"
+          x={playerScreen.x}
+          y={playerScreen.y - 100}
+          anchor={0.5}
+          style={{
+            fill: 0xffff00,
+            fontSize: 14,
+            fontWeight: 'bold',
+            stroke: { color: 0x000000, width: 2 },
+          }}
+        />
+      )}
+
+      {/* Auto-Attack Indicator */}
+      <pixiText
+        text={`AUTO-ATTACK: ${autoAttackEnabled ? 'ON' : 'OFF'} [R]`}
+        x={width - 20}
+        y={80}
+        anchor={{ x: 1, y: 0 }}
+        style={{
+          fill: autoAttackEnabled ? 0x00ff00 : 0x888888,
+          fontSize: 16,
+          fontWeight: 'bold',
+          stroke: { color: 0x000000, width: 3 },
+        }}
+        interactive={true}
+        pointerdown={() => setAutoAttackEnabled(prev => !prev)}
+        cursor="pointer"
+      />
       
       {/* Player character */}
       <Character
@@ -982,7 +1130,7 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
 }
 
 // Main GameStage component
-export function GameStage({
+export const GameStage = memo(function GameStage({
   width,
   height,
   onStatsUpdate,
@@ -1007,6 +1155,6 @@ export function GameStage({
       />
     </Application>
   )
-}
+})
 
 export default GameStage
