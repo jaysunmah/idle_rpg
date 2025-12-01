@@ -4,8 +4,8 @@ src/game/GameStage.jsx: +628-629[0],+630-632[1],+633-634[0],+638-640[0],+642[0],
 
 Conversations:
 
-[0]: 68bc7f15-1e22-4c61-8059-706a96325c57; Examine auto attack logic; claude-4.5-opus-high-thinking;
-[1]: 6af31df4-95a8-4a0a-8602-25182ddfe1db; Implement auto-attack mode for characters; gemini-3-pro;
-[2]: 8b8fd36b-01d1-42ca-adc5-6da914fc1cb0; Fix auto attack logic for platforms; claude-4.5-opus-high-thinking;
-[3]: 68042637-9682-4465-821a-7fd0d7c1ae65; Fix AI climbing behavior in auto-attack; gemini-3-pro;
-[4]: 649e97eb-6ecc-47b5-b35f-55f110e793dd; Character facing bug in auto attack; gemini-3-pro;
+[0]: 68bc7f15-1e22-4c61-8059-706a96325c57; 68bc7f15; unknown;
+[1]: 6af31df4-95a8-4a0a-8602-25182ddfe1db; 6af31df4; unknown;
+[2]: 8b8fd36b-01d1-42ca-adc5-6da914fc1cb0; 8b8fd36b; unknown;
+[3]: 68042637-9682-4465-821a-7fd0d7c1ae65; 68042637; unknown;
+[4]: 649e97eb-6ecc-47b5-b35f-55f110e793dd; 649e97eb; unknown;
