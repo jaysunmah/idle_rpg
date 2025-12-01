@@ -3,6 +3,7 @@ import './App.css'
 import { GameStage, BIOMES, getBiomeForDistance } from './game'
 import { CharacterSelect } from './components'
 import { getCharacter, DEFAULT_CHARACTER } from './game/characters'
+import { loadGame } from './game/persistence'
 
 // Game states
 const GAME_STATE = {
@@ -17,9 +18,12 @@ const BASE_ATTACK_SPEED = 1000
 const xpForLevel = (level) => Math.floor(100 * Math.pow(1.5, level - 1))
 
 function App() {
+  // Load saved game once on mount
+  const [savedGame] = useState(() => loadGame())
+
   // Game state management
-  const [gameState, setGameState] = useState(GAME_STATE.CHARACTER_SELECT)
-  const [selectedCharacter, setSelectedCharacter] = useState(DEFAULT_CHARACTER)
+  const [gameState, setGameState] = useState(savedGame ? GAME_STATE.PLAYING : GAME_STATE.CHARACTER_SELECT)
+  const [selectedCharacter, setSelectedCharacter] = useState(savedGame?.selectedCharacter || DEFAULT_CHARACTER)
   
   const [screenSize, setScreenSize] = useState({
     width: typeof window !== 'undefined' ? window.innerWidth : 1920,
@@ -46,7 +50,7 @@ function App() {
     }
   }, [])
   
-  const [character, setCharacter] = useState(() => getInitialStats(DEFAULT_CHARACTER))
+  const [character, setCharacter] = useState(() => savedGame?.character || getInitialStats(DEFAULT_CHARACTER))
   
   // Handle character selection
   const handleCharacterSelect = useCallback((charId) => {
@@ -61,18 +65,28 @@ function App() {
   const [kills, setKills] = useState(0)
   const [levelUpEffect, setLevelUpEffect] = useState(false)
   const [showUpgrades, setShowUpgrades] = useState(false)
+  const [autoAttackEnabled, setAutoAttackEnabled] = useState(false)
+  const [aiState, setAIState] = useState(null)
   
   // Handle window resize
   useEffect(() => {
+    let timeoutId = null
     const handleResize = () => {
-      setScreenSize({
-        width: window.innerWidth,
-        height: window.innerHeight,
-      })
+      // Debounce resize to prevent excessive re-renders
+      if (timeoutId) clearTimeout(timeoutId)
+      timeoutId = setTimeout(() => {
+        setScreenSize({
+          width: window.innerWidth,
+          height: window.innerHeight,
+        })
+      }, 100)
     }
     
     window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
+    return () => {
+      window.removeEventListener('resize', handleResize)
+      if (timeoutId) clearTimeout(timeoutId)
+    }
   }, [])
   
   // Stats update callback from game
@@ -158,6 +172,9 @@ function App() {
         onKill={handleKill}
         onDistanceUpdate={handleDistanceUpdate}
         selectedCharacter={selectedCharacter}
+        autoAttackEnabled={autoAttackEnabled}
+        setAutoAttackEnabled={setAutoAttackEnabled}
+        onAIStateChange={setAIState}
       />
       
       {/* UI Overlay - Upgrades only now */}
@@ -253,8 +270,18 @@ function App() {
       
       
       {/* Auto Attack Indicator */}
-      <div className="auto-attack-indicator active">
-        Auto-Attack Active
+      <div className="auto-attack-container">
+        <button 
+          className={`auto-attack-indicator ${autoAttackEnabled ? 'active' : ''}`}
+          onClick={() => setAutoAttackEnabled(prev => !prev)}
+        >
+          Auto-Attack: {autoAttackEnabled ? 'ON' : 'OFF'} [R]
+        </button>
+        {autoAttackEnabled && aiState && (
+          <div className={`ai-state-label ai-state-${aiState.toLowerCase().replace(/_/g, '-')}`}>
+            {aiState.replace(/_/g, ' ')}
+          </div>
+        )}
       </div>
       
       {/* Level Up Effect */}

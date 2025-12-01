@@ -14,11 +14,11 @@ import {
   PLATFORM_STYLES,
   LADDER_STYLES,
   Character,
-  Pet,
 } from './components'
 import { getCharacter } from './characters'
 import { PhysicsEngine, PLATFORM_LEVELS } from './PhysicsEngine'
 import { useGameLoop } from './useGameLoop'
+import { saveGame, loadGame } from './persistence'
 
 // Extend PixiJS components for React
 extend({ Container, Graphics, Text, Sprite })
@@ -33,13 +33,194 @@ const PLATFORM_CHUNK_SIZE = 400
 const PLATFORM_WIDTH_MIN = 150
 const PLATFORM_WIDTH_MAX = 300
 const ANIMATION_FRAME_DURATION = 100 // milliseconds per frame
-const PET_FOLLOW_DISTANCE = 60 // Base distance behind for first pet
-const PET_SPACING = 40 // Additional spacing between each pet
-const PET_FOLLOW_SPEED = 0.08 // How quickly pet catches up (lerp factor)
 
 const MAX_ENEMIES = 10
 const CLEANUP_INTERVAL = 2000 // ms
 const UNRENDER_DISTANCE = 2000 // px behind scrollOffset
+
+// AI State Machine States
+const AI_STATE = {
+  MOVING_RIGHT: 'MOVING_RIGHT',      // No enemy - default patrol behavior
+  MOVING_TO_ENEMY: 'MOVING_TO_ENEMY', // Has target, navigating to it
+  ATTACKING_ENEMY: 'ATTACKING_ENEMY', // In range, attacking
+}
+
+// Helper: Find nearest enemy using weighted distance
+function findNearestEnemy(enemies, playerPos) {
+  const VERTICAL_WEIGHT = 5
+  return enemies
+    .filter(e => !e.dying)
+    .sort((a, b) => {
+      const distA = Math.abs(a.worldX - playerPos.x) + Math.abs(a.platformHeight - playerPos.y) * VERTICAL_WEIGHT
+      const distB = Math.abs(b.worldX - playerPos.x) + Math.abs(b.platformHeight - playerPos.y) * VERTICAL_WEIGHT
+      return distA - distB
+    })[0] || null
+}
+
+// Helper: Check if player is in attack range of target
+function isInAttackRange(playerPos, target, attackRange, isClimbing) {
+  if (!target || isClimbing) return false
+  
+  const absDx = Math.abs(target.worldX - playerPos.x)
+  const absDy = Math.abs(target.platformHeight - playerPos.y)
+  const isSameLevel = absDy < 50
+  
+  return isSameLevel && absDx <= attackRange * 0.8
+}
+
+// Helper: Compute navigation keys to reach a target
+function computeNavigationKeys(playerPos, target, isClimbing, ladders) {
+  const keys = { left: false, right: false, up: false, down: false, attack: false }
+  
+  const dx = target.worldX - playerPos.x
+  const dy = target.platformHeight - playerPos.y
+  const absDy = Math.abs(dy)
+  
+  // Determine if we're on the same level
+  const isSameLevel = isClimbing
+    ? (absDy < 5 && playerPos.y >= target.platformHeight - 2)
+    : (absDy < 50)
+  
+  if (isSameLevel) {
+    // Same level - move horizontally towards enemy (this will also dismount if climbing)
+    if (dx > 0) keys.right = true
+    else keys.left = true
+  } else {
+    // Different level - need vertical navigation
+    if (isClimbing) {
+      // Already on ladder - climb towards target level
+      if (dy > 0) keys.up = true
+      else keys.down = true
+    } else {
+      // Find a useful ladder to reach target's level
+      const usefulLadder = ladders
+        .filter(l => {
+          const isAccessible = playerPos.y >= l.bottomHeight - 10 && playerPos.y <= l.topHeight + 10
+          if (!isAccessible) return false
+          if (dy > 0) return l.topHeight > playerPos.y + 20
+          return l.bottomHeight < playerPos.y - 20
+        })
+        .sort((a, b) => Math.abs(a.worldX - playerPos.x) - Math.abs(b.worldX - playerPos.x))[0]
+
+      if (usefulLadder) {
+        const ladderDx = usefulLadder.worldX - playerPos.x
+        if (Math.abs(ladderDx) < 10) {
+          // At ladder - start climbing
+          if (dy > 0) keys.up = true
+          else keys.down = true
+        } else {
+          // Move to ladder
+          if (ladderDx > 0) keys.right = true
+          else keys.left = true
+        }
+      } else {
+        // No useful ladder - fallback to horizontal movement
+        if (dx > 0) keys.right = true
+        else keys.left = true
+      }
+    }
+  }
+  
+  return keys
+}
+
+// AI Finite State Machine - takes previous state and returns next state + key overrides
+function computeAIState({ prevState, enemies, playerPos, attackRange, isClimbing, ladders }) {
+  const { state: currentState, targetId } = prevState
+  
+  // Try to find our locked target (if any)
+  const lockedTarget = targetId ? enemies.find(e => e.id === targetId && !e.dying) : null
+  
+  // State machine transitions
+  switch (currentState) {
+    case AI_STATE.MOVING_RIGHT: {
+      // Look for an enemy to target
+      const nearestEnemy = findNearestEnemy(enemies, playerPos)
+      
+      if (nearestEnemy) {
+        // Enemy detected - lock on and transition to MOVING_TO_ENEMY
+        return {
+          state: AI_STATE.MOVING_TO_ENEMY,
+          targetId: nearestEnemy.id,
+          keys: computeNavigationKeys(playerPos, nearestEnemy, isClimbing, ladders),
+        }
+      }
+      
+      // No enemy - keep moving right
+      return {
+        state: AI_STATE.MOVING_RIGHT,
+        targetId: null,
+        keys: { left: false, right: true, up: false, down: false, attack: false },
+      }
+    }
+    
+    case AI_STATE.MOVING_TO_ENEMY: {
+      // Check if our target is still alive
+      if (!lockedTarget) {
+        // Target died - go back to patrol
+        return {
+          state: AI_STATE.MOVING_RIGHT,
+          targetId: null,
+          keys: { left: false, right: true, up: false, down: false, attack: false },
+        }
+      }
+      
+      // Check if we're in attack range
+      if (isInAttackRange(playerPos, lockedTarget, attackRange, isClimbing)) {
+        // In range - transition to attacking
+        return {
+          state: AI_STATE.ATTACKING_ENEMY,
+          targetId: lockedTarget.id,
+          keys: { left: false, right: false, up: false, down: false, attack: true },
+        }
+      }
+      
+      // Keep navigating to target
+      return {
+        state: AI_STATE.MOVING_TO_ENEMY,
+        targetId: lockedTarget.id,
+        keys: computeNavigationKeys(playerPos, lockedTarget, isClimbing, ladders),
+      }
+    }
+    
+    case AI_STATE.ATTACKING_ENEMY: {
+      // Check if our target is still alive
+      if (!lockedTarget) {
+        // Target died - go back to patrol
+        return {
+          state: AI_STATE.MOVING_RIGHT,
+          targetId: null,
+          keys: { left: false, right: true, up: false, down: false, attack: false },
+        }
+      }
+      
+      // Check if target moved out of range
+      if (!isInAttackRange(playerPos, lockedTarget, attackRange, isClimbing)) {
+        // Out of range - go back to chasing same target
+        return {
+          state: AI_STATE.MOVING_TO_ENEMY,
+          targetId: lockedTarget.id,
+          keys: computeNavigationKeys(playerPos, lockedTarget, isClimbing, ladders),
+        }
+      }
+      
+      // Keep attacking
+      return {
+        state: AI_STATE.ATTACKING_ENEMY,
+        targetId: lockedTarget.id,
+        keys: { left: false, right: false, up: false, down: false, attack: true },
+      }
+    }
+    
+    default:
+      // Unknown state - reset to patrol
+      return {
+        state: AI_STATE.MOVING_RIGHT,
+        targetId: null,
+        keys: { left: false, right: true, up: false, down: false, attack: false },
+      }
+  }
+}
 
 // XP calculation
 const xpForLevel = (level) => Math.floor(100 * Math.pow(1.5, level - 1))
@@ -55,7 +236,7 @@ const seededRandom = (seed) => {
 }
 
 // Game content component (inside Application)
-function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, selectedCharacter }) {
+function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, selectedCharacter, autoAttackEnabled, setAutoAttackEnabled, onAIStateChange }) {
   const app = useApplication()
   
   // Physics engine
@@ -65,8 +246,11 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
   const terrainRef = useRef(null)
   const particlesRef = useRef(null)
   
+  // Load saved game
+  const savedGame = useMemo(() => loadGame(), [])
+
   // Game state
-  const [playerPos, setPlayerPos] = useState({ x: 200, y: 0 })
+  const [playerPos, setPlayerPos] = useState(savedGame?.playerPos || { x: 200, y: 0 })
   const [facingRight, setFacingRight] = useState(true)
   const [isAttacking, setIsAttacking] = useState(false)
   const [isClimbing, setIsClimbing] = useState(false)
@@ -74,62 +258,6 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
   const [isJumping, setIsJumping] = useState(false)
   const [isFalling, setIsFalling] = useState(false)
   const [nearbyLadder, setNearbyLadder] = useState(null)
-  const [autoAttackEnabled, setAutoAttackEnabled] = useState(false)
-  
-  // Pets state - array of pet objects
-  const [pets, setPets] = useState([
-    {
-      id: 1,
-      type: 'doodle',
-      pos: { x: 200 - PET_FOLLOW_DISTANCE, y: 0 },
-      facingRight: true,
-      isMoving: false,
-      targetPos: { x: 200 - PET_FOLLOW_DISTANCE, y: 0 },
-      scale: 1,
-    },
-    {
-      id: 2,
-      type: 'cat',
-      pos: { x: 200 - PET_FOLLOW_DISTANCE - PET_SPACING, y: 0 },
-      facingRight: true,
-      isMoving: false,
-      targetPos: { x: 200 - PET_FOLLOW_DISTANCE - PET_SPACING, y: 0 },
-      scale: 1,
-    },
-  ])
-  const petsTargetPosRef = useRef(pets.map(pet => pet.targetPos))
-  
-  // Helper function to add a new pet
-  const addPet = useCallback((petType = 'doodle', scale = 1) => {
-    setPets(prevPets => {
-      const newId = prevPets.length > 0 ? Math.max(...prevPets.map(p => p.id)) + 1 : 1
-      const lastPet = prevPets[prevPets.length - 1]
-      
-      // Position new pet behind the last pet
-      const initialX = lastPet 
-        ? lastPet.pos.x - (lastPet.facingRight ? PET_SPACING : -PET_SPACING)
-        : playerPos.x - PET_FOLLOW_DISTANCE
-      const initialY = lastPet ? lastPet.pos.y : playerPos.y
-      
-      return [
-        ...prevPets,
-        {
-          id: newId,
-          type: petType,
-          pos: { x: initialX, y: initialY },
-          facingRight: true,
-          isMoving: false,
-          targetPos: { x: initialX, y: initialY },
-          scale,
-        },
-      ]
-    })
-  }, [playerPos])
-  
-  // Helper function to remove a pet by id
-  const removePet = useCallback((petId) => {
-    setPets(prevPets => prevPets.filter(pet => pet.id !== petId))
-  }, [])
   
   // World objects
   const [platforms, setPlatforms] = useState([])
@@ -142,7 +270,7 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
   const enemySpritesRef = useRef(new Map())
   
   // Character stats
-  const [character, setCharacter] = useState({
+  const [character, setCharacter] = useState(savedGame?.character || {
     level: 1,
     xp: 0,
     xpToNext: 100,
@@ -167,19 +295,14 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
   const lastDistanceUpdateRef = useRef(0)
   const attackTimeoutRef = useRef(null)
   
-  // Auto-attack target persistence
-  const currentTargetIdRef = useRef(null)
-  
-  // Use a ref for addPet to avoid re-binding event listeners
-  const addPetRef = useRef(addPet)
-  useEffect(() => {
-    addPetRef.current = addPet
-  }, [addPet])
+  // AI State Machine state (persisted between frames)
+  const aiStateRef = useRef({ state: AI_STATE.MOVING_RIGHT, targetId: null })
+  const wasAutoAttackEnabledRef = useRef(false)
   
   // Initialize physics
   useEffect(() => {
     physicsRef.current = new PhysicsEngine()
-    physicsRef.current.createPlayer(200, 0)
+    physicsRef.current.createPlayer(playerPos.x, playerPos.y)
     
     return () => {
       physicsRef.current?.destroy()
@@ -207,23 +330,23 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
     loadEnemySprites()
   }, [])
   
-  // Expose addPet and removePet functions globally for console access
-  useEffect(() => {
-    window.gameDebug = {
-      addPet: (petType = 'doodle', scale = 1) => addPet(petType, scale),
-      removePet: (petId) => removePet(petId),
-      getPets: () => pets,
-    }
-    
-    return () => {
-      delete window.gameDebug
-    }
-  }, [addPet, removePet, pets])
-  
   // Update parent with stats
   useEffect(() => {
     onStatsUpdate?.(character)
   }, [character, onStatsUpdate])
+
+  // Persistence logic
+  const stateRef = useRef({ character, playerPos, selectedCharacter })
+  useEffect(() => {
+    stateRef.current = { character, playerPos, selectedCharacter }
+  }, [character, playerPos, selectedCharacter])
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      saveGame(stateRef.current)
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [])
   
   // Update distance
   useEffect(() => {
@@ -234,7 +357,7 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
   const characterScreenX = width * 0.3
   const scrollOffset = Math.max(0, playerPos.x - characterScreenX)
   const currentBiome = getBiomeForDistance(playerPos.x)
-  const biome = BIOMES[currentBiome]
+  const biome = BIOMES[currentBiome] || BIOMES.darkForest
   
   // Get character stats
   const characterDef = useMemo(() => getCharacter(selectedCharacter), [selectedCharacter])
@@ -253,23 +376,6 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
         jumpRequestedRef.current = true // Persists until consumed
       }
       if (e.key === 'z' || e.key === 'Z') keysPressed.current.attack = true
-      // Press 'P' to add a new pet
-      if (e.key === 'p' || e.key === 'P') {
-        addPetRef.current('doodle', 1)
-      }
-      // Press 'C' to add a cat pet
-      if (e.key === 'c' || e.key === 'C') {
-        addPetRef.current('cat', 1)
-      }
-      // Press 'O' to remove the last pet
-      if (e.key === 'o' || e.key === 'O') {
-        setPets(prevPets => {
-          if (prevPets.length > 1) {
-            return prevPets.slice(0, -1)
-          }
-          return prevPets
-        })
-      }
       // Toggle Auto-Attack with 'R'
       if (e.key === 'r' || e.key === 'R') {
         setAutoAttackEnabled(prev => !prev)
@@ -291,7 +397,7 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
       window.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('keyup', handleKeyUp)
     }
-  }, []) // Empty dependency array - stable event listeners!
+  }, [setAutoAttackEnabled])
   
   // Generate platforms and ladders
   const generatePlatformsAndLadders = useCallback((viewEnd) => {
@@ -628,150 +734,39 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
     // Copy keysPressed to a local mutable object so we can override it for Auto-Attack
     const currentKeys = { ...keysPressed.current }
 
-    // Auto-Attack Logic
+    // Auto-Attack AI State Machine
     if (autoAttackEnabled) {
-      // Find nearest reachable enemy
-      const target = enemies
-        .filter(e => !e.dying)
-        .sort((a, b) => {
-           // Weighted distance: horizontal + vertical * 5 (strongly prioritize nearby first, then reachable vertical)
-           // Increasing vertical weight to 5 to avoid "incentivizing" climbing unless necessary
-           const VERTICAL_WEIGHT = 5
-           const distA = Math.abs(a.worldX - playerPos.x) + Math.abs(a.platformHeight - playerPos.y) * VERTICAL_WEIGHT
-           const distB = Math.abs(b.worldX - playerPos.x) + Math.abs(b.platformHeight - playerPos.y) * VERTICAL_WEIGHT
-           return distA - distB
-        })[0]
-
-      if (target) {
-        const dx = target.worldX - playerPos.x
-        const dy = target.platformHeight - playerPos.y
-        const absDx = Math.abs(dx)
-        const absDy = Math.abs(dy)
-        
-        // If climbing, we need to be much closer to the target level to consider it "same level"
-        // so we don't dismount early and fall.
-        const levelThreshold = isClimbing ? 10 : 50
-        const isSameLevel = absDy < levelThreshold
-        
-        if (isSameLevel) {
-          // Horizontal movement and attack logic
-          const inRange = absDx <= attackRange * 0.8
-  
-          if (inRange) {
-             if (isClimbing) {
-                 // Force dismount by moving towards enemy
-                 if (dx > 0) {
-                   currentKeys.right = true
-                   currentKeys.left = false
-                 } else {
-                   currentKeys.left = true
-                   currentKeys.right = false
-                 }
-                 currentKeys.attack = false
-                 // Ensure we don't climb up/down while trying to dismount
-                 currentKeys.up = false
-                 currentKeys.down = false
-             } else {
-                 // Stop moving and attack
-                 currentKeys.left = false
-                 currentKeys.right = false
-                 currentKeys.attack = true
-             }
-          } else {
-             // Move towards enemy
-             if (dx > 0) {
-               currentKeys.right = true
-               currentKeys.left = false
-             } else {
-               currentKeys.left = true
-               currentKeys.right = false
-             }
-             currentKeys.attack = false
-             
-             // If climbing and on same level, ensure we stop climbing verticaly
-             if (isClimbing) {
-                 currentKeys.up = false
-                 currentKeys.down = false
-             }
-          }
-        } else {
-          // Vertical movement needed
-          currentKeys.attack = false
-          
-          if (isClimbing) {
-            // We are on a ladder, climb towards target level
-            if (dy > 0) {
-              currentKeys.up = true
-              currentKeys.down = false
-            } else {
-              currentKeys.down = true
-              currentKeys.up = false
-            }
-          } else {
-            // Find a ladder that helps us change level
-            // We need a ladder that connects our current Y to the target Y direction
-            // Sort ladders by proximity
-            const usefulLadder = ladders
-              .filter(l => {
-                // Check if ladder is accessible from current Y (with some tolerance)
-                const isAccessible = playerPos.y >= l.bottomHeight - 10 && playerPos.y <= l.topHeight + 10
-                if (!isAccessible) return false
-                
-                // Check if ladder goes in the right direction
-                if (dy > 0) { // Target is above
-                   return l.topHeight > playerPos.y + 20
-                } else { // Target is below
-                   return l.bottomHeight < playerPos.y - 20
-                }
-              })
-              .sort((a, b) => Math.abs(a.worldX - playerPos.x) - Math.abs(b.worldX - playerPos.x))[0]
-            
-            if (usefulLadder) {
-               const ladderDx = usefulLadder.worldX - playerPos.x
-               
-               if (Math.abs(ladderDx) < 10) {
-                 // At ladder, start climbing
-                 if (dy > 0) currentKeys.up = true
-                 else currentKeys.down = true
-                 // Stop horizontal movement to snap/climb
-                 currentKeys.left = false
-                 currentKeys.right = false
-               } else {
-                 // Move to ladder
-                 if (ladderDx > 0) {
-                   currentKeys.right = true
-                   currentKeys.left = false
-                 } else {
-                   currentKeys.left = true
-                   currentKeys.right = false
-                 }
-               }
-            } else {
-               // No useful ladder found, maybe just move horizontally towards target as fallback
-               if (dx > 0) {
-                 currentKeys.right = true
-                 currentKeys.left = false
-               } else {
-                 currentKeys.left = true
-                 currentKeys.right = false
-               }
-            }
-          }
-        }
-      } else {
-        // No target found - Default behavior: Move Right
-        // "look for a nearby mob. if there isn't one, move to the right until there is a nearby mob."
-        currentKeys.right = true
-        currentKeys.left = false
-        currentKeys.up = false
-        currentKeys.down = false
-        currentKeys.attack = false
-        
-        // If we happen to be on a ladder while searching/moving right, climb to ground or just get off
-        if (isClimbing) {
-            // Climb down if high up, or up if low? 
-            // Simplest is to just move right to dismount if possible
-        }
+      const justEnabled = !wasAutoAttackEnabledRef.current
+      wasAutoAttackEnabledRef.current = true
+      
+      const aiResult = computeAIState({
+        prevState: aiStateRef.current,
+        enemies,
+        playerPos,
+        attackRange,
+        isClimbing,
+        ladders,
+      })
+      
+      // Update AI state ref
+      const prevStateName = aiStateRef.current.state
+      aiStateRef.current = { state: aiResult.state, targetId: aiResult.targetId }
+      
+      // Notify parent of state changes (or on first enable)
+      if ((justEnabled || aiResult.state !== prevStateName) && onAIStateChange) {
+        onAIStateChange(aiResult.state)
+      }
+      
+      // Apply AI key overrides
+      Object.assign(currentKeys, aiResult.keys)
+    } else {
+      // Reset AI state when auto-attack is disabled
+      wasAutoAttackEnabledRef.current = false
+      if (aiStateRef.current.state !== AI_STATE.MOVING_RIGHT || aiStateRef.current.targetId !== null) {
+        aiStateRef.current = { state: AI_STATE.MOVING_RIGHT, targetId: null }
+      }
+      if (onAIStateChange) {
+        onAIStateChange(null)
       }
     }
 
@@ -924,55 +919,6 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
     const pos = physics.getPlayerPosition()
     setPlayerPos({ x: pos.x, y: Math.max(0, pos.y) })
     
-    // Update pets positions (each follows the player or previous pet)
-    setPets(prevPets => {
-      return prevPets.map((pet, index) => {
-        // First pet follows player, others follow the previous pet in a chain
-        let targetX, targetY
-        
-        if (index === 0) {
-          // First pet follows player
-          const followDistance = PET_FOLLOW_DISTANCE
-          targetX = pos.x - (facingRight ? followDistance : -followDistance)
-          targetY = Math.max(0, pos.y)
-        } else {
-          // Subsequent pets follow the previous pet in a chain
-          const prevPet = prevPets[index - 1]
-          const followDistance = PET_SPACING
-          targetX = prevPet.pos.x - (prevPet.facingRight ? followDistance : -followDistance)
-          targetY = prevPet.pos.y
-        }
-        
-        const dx = targetX - pet.pos.x
-        const dy = targetY - pet.pos.y
-        const distance = Math.sqrt(dx * dx + dy * dy)
-        
-        // Pet is moving if there's significant distance to cover
-        const moving = distance > 5
-        
-        // Update pet facing direction based on movement
-        let newFacingRight = pet.facingRight
-        if (Math.abs(dx) > 2) {
-          newFacingRight = dx > 0
-        }
-        
-        // Smooth interpolation towards target
-        // Use faster lerp when far away, slower when close
-        const lerpFactor = distance > 100 ? 0.15 : PET_FOLLOW_SPEED
-        
-        return {
-          ...pet,
-          pos: {
-            x: pet.pos.x + dx * lerpFactor,
-            y: pet.pos.y + dy * lerpFactor,
-          },
-          facingRight: newFacingRight,
-          isMoving: moving,
-          targetPos: { x: targetX, y: targetY },
-        }
-      })
-    })
-    
     // Update enemies
     setEnemies(prev => prev.map(enemy => {
       if (enemy.dying) return enemy
@@ -1062,7 +1008,7 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
     }
     // Character sprite is now managed via ref, no drawing needed
     
-  }, [playerPos, isClimbing, isMoving, isAttacking, isJumping, isFalling, facingRight, platforms, generatePlatformsAndLadders, spawnEnemy, attackEnemy, character.attackSpeed, width, height, scrollOffset, currentBiome, autoAttackEnabled, enemies, ladders, attackRange])
+  }, [playerPos, isClimbing, isMoving, isAttacking, isJumping, isFalling, facingRight, platforms, generatePlatformsAndLadders, spawnEnemy, attackEnemy, character.attackSpeed, width, height, scrollOffset, currentBiome, autoAttackEnabled, enemies, ladders, attackRange, onAIStateChange])
   
   useGameLoop(gameUpdate)
   
@@ -1139,55 +1085,8 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
         )
       })}
       
-      {/* Pet companions */}
-      {pets.map((pet) => {
-        const screenPos = worldToScreen(pet.pos.x, pet.pos.y)
-        return (
-          <Pet
-            key={`pet-${pet.id}`}
-            x={screenPos.x}
-            y={screenPos.y}
-            facingRight={pet.facingRight}
-            isMoving={pet.isMoving}
-            petType={pet.type}
-            scale={pet.scale}
-          />
-        )
-      })}
-      
-      {/* Climb indicator */}
-      {!!nearbyLadder && !isClimbing && (
-        <pixiText
-          text="↑↓ Climb"
-          x={playerScreen.x}
-          y={playerScreen.y - 100}
-          anchor={0.5}
-          style={{
-            fill: 0xffff00,
-            fontSize: 14,
-            fontWeight: 'bold',
-            stroke: { color: 0x000000, width: 2 },
-          }}
-        />
-      )}
 
-      {/* Auto-Attack Indicator */}
-      <pixiText
-        text={`AUTO-ATTACK: ${autoAttackEnabled ? 'ON' : 'OFF'} [R]`}
-        x={width - 20}
-        y={80}
-        anchor={{ x: 1, y: 0 }}
-        style={{
-          fill: autoAttackEnabled ? 0x00ff00 : 0x888888,
-          fontSize: 16,
-          fontWeight: 'bold',
-          stroke: { color: 0x000000, width: 3 },
-        }}
-        interactive={true}
-        pointerdown={() => setAutoAttackEnabled(prev => !prev)}
-        cursor="pointer"
-      />
-      
+
       {/* Player character */}
       <Character
         x={playerScreen.x}
@@ -1259,11 +1158,13 @@ export const GameStage = memo(function GameStage({
   onKill,
   onDistanceUpdate,
   selectedCharacter,
+  autoAttackEnabled,
+  setAutoAttackEnabled,
+  onAIStateChange,
 }) {
   return (
     <Application
-      width={width}
-      height={height}
+      resizeTo={typeof window !== 'undefined' ? window : undefined}
       backgroundColor={0x0a0a0f}
       antialias={true}
     >
@@ -1274,6 +1175,9 @@ export const GameStage = memo(function GameStage({
         onKill={onKill}
         onDistanceUpdate={onDistanceUpdate}
         selectedCharacter={selectedCharacter}
+        autoAttackEnabled={autoAttackEnabled}
+        setAutoAttackEnabled={setAutoAttackEnabled}
+        onAIStateChange={onAIStateChange}
       />
     </Application>
   )

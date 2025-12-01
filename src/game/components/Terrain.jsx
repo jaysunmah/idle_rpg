@@ -78,8 +78,11 @@ export const BIOMES = {
 export const getBiomeForDistance = (distance) => {
   const zoneSize = 5000
   const biomeKeys = Object.keys(BIOMES)
-  const biomeIndex = Math.floor(distance / zoneSize) % biomeKeys.length
-  return biomeKeys[biomeIndex]
+  // Handle negative distance by clamping to 0 (start of game)
+  // or use Math.abs() if we want mirrored biomes
+  const validDistance = Math.max(0, distance || 0)
+  const biomeIndex = Math.floor(validDistance / zoneSize) % biomeKeys.length
+  return biomeKeys[biomeIndex] || biomeKeys[0]
 }
 
 // Seeded random

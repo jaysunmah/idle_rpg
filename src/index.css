@@ -994,11 +994,19 @@ h1, h2, h3, h4 {
   }
 }
 
-/* Auto Attack Indicator */
-.auto-attack-indicator {
+/* Auto Attack Container */
+.auto-attack-container {
   position: fixed;
   bottom: 120px;
   right: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+/* Auto Attack Indicator */
+.auto-attack-indicator {
   background: rgba(10, 10, 20, 0.9);
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
@@ -1006,6 +1014,14 @@ h1, h2, h3, h4 {
   font-size: 12px;
   color: var(--text-secondary);
   backdrop-filter: blur(10px);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s ease;
+}
+
+.auto-attack-indicator:hover {
+  border-color: var(--accent-gold);
+  transform: scale(1.05);
 }
 
 .auto-attack-indicator.active {
@@ -1015,6 +1031,35 @@ h1, h2, h3, h4 {
 
 .auto-attack-indicator.active::before {
   content: '⚔️ ';
+}
+
+/* AI State Label */
+.ai-state-label {
+  background: rgba(10, 10, 20, 0.85);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  backdrop-filter: blur(10px);
+  transition: all 0.2s ease;
+}
+
+.ai-state-label.ai-state-moving-right {
+  color: #6b9fff;
+  border-color: #6b9fff44;
+}
+
+.ai-state-label.ai-state-moving-to-enemy {
+  color: #ffb86b;
+  border-color: #ffb86b44;
+}
+
+.ai-state-label.ai-state-attacking-enemy {
+  color: #ff6b6b;
+  border-color: #ff6b6b44;
 }
 
 /* ===========================================
