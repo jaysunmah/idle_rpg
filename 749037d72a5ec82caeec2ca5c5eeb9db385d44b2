@@ -18,6 +18,6 @@ Conversations:
 [7]: dff6ab38-6258-4ab3-887a-86c3a0395247; Fix bugs in ladder climbing; gemini-3-pro;
 [8]: 6512ee70-ddd4-4b5d-ad42-597da65f3acc; Remove code related to Pet.jsx; gemini-3-pro;
 [9]: c3f59b3a-2167-46ba-b052-30384d7bafe6; Incorporate sprite sheet for character; claude-4.5-opus-high-thinking;
-[10]: 3a9a7141-0291-40ff-9fe7-763a291817bb; Incorporate warrior character assets; gemini-3-pro;
+[10]: 99332588-017e-436b-8bde-34bc1fb17cb2; Add selectable character asset; claude-4.5-opus-high-thinking;
 [11]: bcfbb087-9781-4fd4-a326-3ab8b171e955; Remove spriteFrames and previewFrame; claude-4.5-opus-high-thinking;
 [12]: 634f0d0e-30f4-4fbe-85f3-3a5219c743b5; Use climbing animation frames for user; gemini-3-pro;
