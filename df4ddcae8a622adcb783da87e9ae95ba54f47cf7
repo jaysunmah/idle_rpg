@@ -11,14 +11,14 @@ src/index.css: +997-998[6],+1002[5],+1003-1005[6],+1006[5],+1008-1009[6],+1017[5
 
 Conversations:
 
-[0]: 6512ee70-ddd4-4b5d-ad42-597da65f3acc; Remove code related to Pet.jsx; gemini-3-pro;
-[1]: 8f8779f5-73b3-41fc-98cd-e348a2988bb6; Implement persistent storage for game data; gemini-3-pro;
-[2]: 0199e1bb-f621-4be5-8170-7a4c02d5ef55; Combine auto-attack commands; gemini-3-pro;
-[3]: 3ec2dd19-90e2-41f6-b716-d751c9256ade; Handle screen resizing in game; gemini-3-pro;
-[4]: 916c947e-15b9-43aa-9d12-0026e2a58538; Save game state with upgrades and stats; claude-4.5-opus-high-thinking;
-[5]: 78280ea0-93b1-4cd3-9336-6c1f1c57a383; Implement new game reset feature; claude-4.5-opus-high-thinking;
-[6]: 68bc7f15-1e22-4c61-8059-706a96325c57; Examine auto attack logic; claude-4.5-opus-high-thinking;
-[7]: 649e97eb-6ecc-47b5-b35f-55f110e793dd; Character facing bug in auto attack; gemini-3-pro;
-[8]: 8b8fd36b-01d1-42ca-adc5-6da914fc1cb0; Fix auto attack logic for platforms; claude-4.5-opus-high-thinking;
-[9]: f6e9deb2-27fe-4b95-85a9-cc799dca4f81; Bug in AI ladder climbing loop; gemini-3-pro;
+[0]: 6512ee70-ddd4-4b5d-ad42-597da65f3acc; 6512ee70; unknown;
+[1]: 8f8779f5-73b3-41fc-98cd-e348a2988bb6; 8f8779f5; unknown;
+[2]: 0199e1bb-f621-4be5-8170-7a4c02d5ef55; 0199e1bb; unknown;
+[3]: 3ec2dd19-90e2-41f6-b716-d751c9256ade; 3ec2dd19; unknown;
+[4]: 916c947e-15b9-43aa-9d12-0026e2a58538; 916c947e; unknown;
+[5]: 78280ea0-93b1-4cd3-9336-6c1f1c57a383; 78280ea0; unknown;
+[6]: 68bc7f15-1e22-4c61-8059-706a96325c57; 68bc7f15; unknown;
+[7]: 649e97eb-6ecc-47b5-b35f-55f110e793dd; 649e97eb; unknown;
+[8]: 8b8fd36b-01d1-42ca-adc5-6da914fc1cb0; 8b8fd36b; unknown;
+[9]: f6e9deb2-27fe-4b95-85a9-cc799dca4f81; f6e9deb2; unknown;
 [10]: 6fe7fc29-6b3b-42c2-a9a2-750aa23038c7; 6fe7fc29; unknown;
