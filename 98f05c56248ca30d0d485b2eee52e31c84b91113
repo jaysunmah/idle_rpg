@@ -4,17 +4,17 @@ src/game/GameStage.jsx: +3[0],+40-42[1],+77[2],+165[1],+166-167[0],+266-268[2],+
 
 Conversations:
 
-[0]: dff6ab38-6258-4ab3-887a-86c3a0395247; Fix bugs in ladder climbing; gemini-3-pro;
-[1]: 056a6b74-43ef-4fe3-8be4-e93dd789bde7; Limit mob spawns and optimize chunk rendering; gemini-3-pro;
-[2]: 6af31df4-95a8-4a0a-8602-25182ddfe1db; Implement auto-attack mode for characters; gemini-3-pro;
-[3]: 649e97eb-6ecc-47b5-b35f-55f110e793dd; Character facing bug in auto attack; gemini-3-pro;
-[4]: 8f8779f5-73b3-41fc-98cd-e348a2988bb6; Implement persistent storage for game data; gemini-3-pro;
-[5]: e9d11460-1340-438f-aeee-57133cc0b530; Fix mob spawning in the air; gemini-3-pro;
-[6]: 8b8fd36b-01d1-42ca-adc5-6da914fc1cb0; Fix auto attack logic for platforms; claude-4.5-opus-high-thinking;
-[7]: 68bc7f15-1e22-4c61-8059-706a96325c57; Examine auto attack logic; claude-4.5-opus-high-thinking;
-[8]: 68042637-9682-4465-821a-7fd0d7c1ae65; Fix AI climbing behavior in auto-attack; gemini-3-pro;
+[0]: dff6ab38-6258-4ab3-887a-86c3a0395247; dff6ab38; unknown;
+[1]: 056a6b74-43ef-4fe3-8be4-e93dd789bde7; 056a6b74; unknown;
+[2]: 6af31df4-95a8-4a0a-8602-25182ddfe1db; 6af31df4; unknown;
+[3]: 649e97eb-6ecc-47b5-b35f-55f110e793dd; 649e97eb; unknown;
+[4]: 8f8779f5-73b3-41fc-98cd-e348a2988bb6; 8f8779f5; unknown;
+[5]: e9d11460-1340-438f-aeee-57133cc0b530; e9d11460; unknown;
+[6]: 8b8fd36b-01d1-42ca-adc5-6da914fc1cb0; 8b8fd36b; unknown;
+[7]: 68bc7f15-1e22-4c61-8059-706a96325c57; 68bc7f15; unknown;
+[8]: 68042637-9682-4465-821a-7fd0d7c1ae65; 68042637; unknown;
 [9]: f5cf139f-9ee3-4445-b0d3-6183549cb8af; f5cf139f; unknown;
-[10]: ebdb6fea-20c9-4248-bba3-0587b4f44b5e; Create indicator for auto attack target; claude-4.5-opus-high-thinking;
-[11]: f6e9deb2-27fe-4b95-85a9-cc799dca4f81; Bug in AI ladder climbing loop; gemini-3-pro;
-[12]: 916c947e-15b9-43aa-9d12-0026e2a58538; Save game state with upgrades and stats; claude-4.5-opus-high-thinking;
-[13]: 03c545db-9049-4f43-9f42-8a1206ffb852; Bug with climbing up a ladder; claude-4.5-opus-high-thinking;
+[10]: ebdb6fea-20c9-4248-bba3-0587b4f44b5e; ebdb6fea; unknown;
+[11]: f6e9deb2-27fe-4b95-85a9-cc799dca4f81; f6e9deb2; unknown;
+[12]: 916c947e-15b9-43aa-9d12-0026e2a58538; 916c947e; unknown;
+[13]: 03c545db-9049-4f43-9f42-8a1206ffb852; 03c545db; unknown;
