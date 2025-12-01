@@ -646,10 +646,25 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
           const inRange = absDx <= ATTACK_RANGE * 0.8
   
           if (inRange) {
-             // Stop moving and attack
-             currentKeys.left = false
-             currentKeys.right = false
-             currentKeys.attack = true
+             if (isClimbing) {
+                 // Force dismount by moving towards enemy
+                 if (dx > 0) {
+                   currentKeys.right = true
+                   currentKeys.left = false
+                 } else {
+                   currentKeys.left = true
+                   currentKeys.right = false
+                 }
+                 currentKeys.attack = false
+                 // Ensure we don't climb up/down while trying to dismount
+                 currentKeys.up = false
+                 currentKeys.down = false
+             } else {
+                 // Stop moving and attack
+                 currentKeys.left = false
+                 currentKeys.right = false
+                 currentKeys.attack = true
+             }
           } else {
              // Move towards enemy
              if (dx > 0) {
@@ -660,6 +675,12 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
                currentKeys.right = false
              }
              currentKeys.attack = false
+             
+             // If climbing and on same level, ensure we stop climbing verticaly
+             if (isClimbing) {
+                 currentKeys.up = false
+                 currentKeys.down = false
+             }
           }
         } else {
           // Vertical movement needed
