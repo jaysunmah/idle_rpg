@@ -1,22 +1,47 @@
 import { useState, useEffect } from 'react'
+import { Application, extend } from '@pixi/react'
+import { Container } from 'pixi.js'
 import { getAllCharacters, getCharacter } from '../game/characters'
+import { Character, CHARACTER_HEIGHT } from '../game/components/Character'
 import './CharacterSelect.css'
+
+// Extend PixiJS components for React
+extend({ Container })
+
+// Preview dimensions
+const PREVIEW_WIDTH = 200
+const PREVIEW_HEIGHT = 200
+
+// Character preview using the same PixiJS rendering as the game
+function CharacterPreview({ characterType, size = 'large' }) {
+  const isLarge = size === 'large'
+  const width = isLarge ? PREVIEW_WIDTH : 100
+  const height = isLarge ? PREVIEW_HEIGHT : 120
+  
+  return (
+    <Application
+      width={width}
+      height={height}
+      backgroundAlpha={0}
+      antialias={true}
+    >
+      <Character
+        x={width / 2}
+        y={height - 10}
+        facingRight={true}
+        isMoving={true}
+        characterType={characterType}
+      />
+    </Application>
+  )
+}
 
 export function CharacterSelect({ onSelect, initialCharacter }) {
   const characters = getAllCharacters()
   const [selectedId, setSelectedId] = useState(initialCharacter || characters[0].id)
   const [isAnimating, setIsAnimating] = useState(false)
-  const [previewFrame, setPreviewFrame] = useState(0)
   
   const selectedCharacter = getCharacter(selectedId)
-  
-  // Animate the preview sprite
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setPreviewFrame(prev => (prev + 1) % selectedCharacter.spriteFrames.length)
-    }, 150)
-    return () => clearInterval(interval)
-  }, [selectedId, selectedCharacter.spriteFrames.length])
   
   // Keyboard support
   useEffect(() => {
@@ -33,7 +58,6 @@ export function CharacterSelect({ onSelect, initialCharacter }) {
     if (id !== selectedId) {
       setIsAnimating(true)
       setSelectedId(id)
-      setPreviewFrame(0)
       setTimeout(() => setIsAnimating(false), 250)
     }
   }
@@ -67,11 +91,7 @@ export function CharacterSelect({ onSelect, initialCharacter }) {
             >
               <div className="card-content">
                 <div className="card-portrait">
-                  <img 
-                    src={char.previewFrame} 
-                    alt={char.name}
-                    className="portrait-image"
-                  />
+                  <CharacterPreview characterType={char.id} size="small" />
                 </div>
                 <span className="card-name">{char.name}</span>
               </div>
@@ -88,11 +108,7 @@ export function CharacterSelect({ onSelect, initialCharacter }) {
         <div className="preview-panel">
           <div className={`preview-character ${isAnimating ? 'animating' : ''}`}>
             <div className="preview-glow" style={{ '--char-color': selectedCharacter.color }} />
-            <img 
-              src={selectedCharacter.spriteFrames[previewFrame]}
-              alt={selectedCharacter.name}
-              className="preview-sprite"
-            />
+            <CharacterPreview characterType={selectedId} size="large" />
           </div>
           
           <div className="preview-info">

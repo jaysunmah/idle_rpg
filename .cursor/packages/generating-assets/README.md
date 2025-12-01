@@ -37,6 +37,10 @@ DO NOT PROCEED ONTO PHASE 2 UNTIL YOU HAVE VERIFIED THE IMAGE GENERATION AND COU
 
 ## Script usage
 
+Please make sure you are running the `uv` command inside this script. So you'll most likely need to run `cd <working_directory>/.cursor/packages/generating-assets/scripts` before running the script.
+
+You should also reference images by their absolute path to reliably reference the images.
+
 usage: process_image_spreadsheet.py [-h] [-t TOLERANCE] [-m MERGE_DISTANCE] [-p PADDING] input_image output_dir num_frames
 
 Remove background color from spritesheet and extract individual frames.

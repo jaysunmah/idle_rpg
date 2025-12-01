@@ -16,6 +16,7 @@ import {
   Character,
   Pet,
 } from './components'
+import { getCharacter } from './characters'
 import { PhysicsEngine, PLATFORM_LEVELS } from './PhysicsEngine'
 import { useGameLoop } from './useGameLoop'
 
@@ -23,7 +24,6 @@ import { useGameLoop } from './useGameLoop'
 extend({ Container, Graphics, Text, Sprite })
 
 // Game constants
-const ATTACK_RANGE = 200
 const BASE_ATTACK_SPEED = 600
 const ENEMY_SPAWN_RATE = 2500
 const CLIMB_SPEED = 180
@@ -167,6 +167,9 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
   const lastDistanceUpdateRef = useRef(0)
   const attackTimeoutRef = useRef(null)
   
+  // Auto-attack target persistence
+  const currentTargetIdRef = useRef(null)
+  
   // Use a ref for addPet to avoid re-binding event listeners
   const addPetRef = useRef(addPet)
   useEffect(() => {
@@ -233,6 +236,10 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
   const currentBiome = getBiomeForDistance(playerPos.x)
   const biome = BIOMES[currentBiome]
   
+  // Get character stats
+  const characterDef = useMemo(() => getCharacter(selectedCharacter), [selectedCharacter])
+  const attackRange = characterDef.stats.attackRange || 100
+
   // Keyboard input
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -481,7 +488,7 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
           ? e.worldX - playerPos.x
           : playerPos.x - e.worldX
         
-        if (horizontalDist > ATTACK_RANGE || horizontalDist < -50) return false
+        if (horizontalDist > attackRange || horizontalDist < -50) return false
         
         const verticalDist = Math.abs(e.platformHeight - playerPos.y)
         if (verticalDist > 50) return false
@@ -627,9 +634,11 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
       const target = enemies
         .filter(e => !e.dying)
         .sort((a, b) => {
-           // Weighted distance: horizontal + vertical * 2 (prioritize nearby first, then reachable vertical)
-           const distA = Math.abs(a.worldX - playerPos.x) + Math.abs(a.platformHeight - playerPos.y) * 2
-           const distB = Math.abs(b.worldX - playerPos.x) + Math.abs(b.platformHeight - playerPos.y) * 2
+           // Weighted distance: horizontal + vertical * 5 (strongly prioritize nearby first, then reachable vertical)
+           // Increasing vertical weight to 5 to avoid "incentivizing" climbing unless necessary
+           const VERTICAL_WEIGHT = 5
+           const distA = Math.abs(a.worldX - playerPos.x) + Math.abs(a.platformHeight - playerPos.y) * VERTICAL_WEIGHT
+           const distB = Math.abs(b.worldX - playerPos.x) + Math.abs(b.platformHeight - playerPos.y) * VERTICAL_WEIGHT
            return distA - distB
         })[0]
 
@@ -639,11 +648,14 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
         const absDx = Math.abs(dx)
         const absDy = Math.abs(dy)
         
-        const isSameLevel = absDy < 50
+        // If climbing, we need to be much closer to the target level to consider it "same level"
+        // so we don't dismount early and fall.
+        const levelThreshold = isClimbing ? 10 : 50
+        const isSameLevel = absDy < levelThreshold
         
         if (isSameLevel) {
           // Horizontal movement and attack logic
-          const inRange = absDx <= ATTACK_RANGE * 0.8
+          const inRange = absDx <= attackRange * 0.8
   
           if (inRange) {
              if (isClimbing) {
@@ -695,12 +707,6 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
               currentKeys.down = true
               currentKeys.up = false
             }
-            
-            // If we're close to target level, try to dismount towards target
-            if (absDy < 20) {
-               if (dx > 0) currentKeys.right = true
-               else currentKeys.left = true
-            }
           } else {
             // Find a ladder that helps us change level
             // We need a ladder that connects our current Y to the target Y direction
@@ -751,6 +757,20 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
                }
             }
           }
+        }
+      } else {
+        // No target found - Default behavior: Move Right
+        // "look for a nearby mob. if there isn't one, move to the right until there is a nearby mob."
+        currentKeys.right = true
+        currentKeys.left = false
+        currentKeys.up = false
+        currentKeys.down = false
+        currentKeys.attack = false
+        
+        // If we happen to be on a ladder while searching/moving right, climb to ground or just get off
+        if (isClimbing) {
+            // Climb down if high up, or up if low? 
+            // Simplest is to just move right to dismount if possible
         }
       }
     }
@@ -1042,7 +1062,7 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
     }
     // Character sprite is now managed via ref, no drawing needed
     
-  }, [playerPos, isClimbing, isMoving, isAttacking, isJumping, isFalling, facingRight, platforms, generatePlatformsAndLadders, spawnEnemy, attackEnemy, character.attackSpeed, width, height, scrollOffset, currentBiome, autoAttackEnabled, enemies, ladders])
+  }, [playerPos, isClimbing, isMoving, isAttacking, isJumping, isFalling, facingRight, platforms, generatePlatformsAndLadders, spawnEnemy, attackEnemy, character.attackSpeed, width, height, scrollOffset, currentBiome, autoAttackEnabled, enemies, ladders, attackRange])
   
   useGameLoop(gameUpdate)
   
@@ -1176,7 +1196,6 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
         isMoving={isMoving}
         isClimbing={isClimbing}
         isAttacking={isAttacking}
-        showClimbIndicator={!!nearbyLadder && !isClimbing}
         showClimbingControls={isClimbing}
         characterType={selectedCharacter}
       />

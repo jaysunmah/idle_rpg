@@ -13,9 +13,9 @@ export const COLLISION_CATEGORIES = {
 // Platform height levels (matching original)
 export const PLATFORM_LEVELS = {
   ground: 0,
-  level1: 120,
-  level2: 240,
-  level3: 360,
+  level1: 180,
+  level2: 360,
+  level3: 540,
 }
 
 export class PhysicsEngine {
@@ -77,7 +77,7 @@ export class PhysicsEngine {
   }
   
   // Create player body
-  createPlayer(x, y, width = 40, height = 60) {
+  createPlayer(x, y, width = 30, height = 45) {
     const body = Matter.Bodies.rectangle(x, -y - height / 2, width, height, {
       label: 'player',
       friction: 0.1,
@@ -161,16 +161,22 @@ export class PhysicsEngine {
   }
   
   // Check if player is near a ladder
-  getNearbyLadder(playerX, playerY, tolerance = 50) {
-    return this.ladders.find(ladder => {
+  getNearbyLadders(playerX, playerY, tolerance = 10) {
+    return this.ladders.filter(ladder => {
       const isNearX = Math.abs(ladder.worldX - playerX) < tolerance
       // More forgiving Y range check:
       // - Player can be slightly below the ladder bottom (to start climbing from ground/platform)
       // - Player can be at or slightly above the ladder top (to climb down from platform)
       // - Player height is ~60px, so we need to account for feet vs center position
-      const isInYRange = playerY >= ladder.bottomHeight - 30 && playerY <= ladder.topHeight + 50
+      const isInYRange = playerY >= ladder.bottomHeight - 30 && playerY <= ladder.topHeight + 40
       return isNearX && isInYRange
     })
+  }
+  
+  // Legacy support for single ladder check (returns first match)
+  getNearbyLadder(playerX, playerY, tolerance = 50) {
+    const ladders = this.getNearbyLadders(playerX, playerY, tolerance)
+    return ladders.length > 0 ? ladders[0] : null
   }
   
   // Check if body is grounded
@@ -295,15 +301,28 @@ export class PhysicsEngine {
       y: player.position.y - dy, // Negative because Matter.js Y is inverted
     })
   }
+
+  // Snap player to ladder X position
+  snapToLadder(x) {
+    const player = this.bodies.get('player')
+    if (!player) return
+    
+    Matter.Body.setPosition(player, {
+      x: x,
+      y: player.position.y
+    })
+  }
   
   // Get player position in game coordinates
   getPlayerPosition() {
     const player = this.bodies.get('player')
     if (!player) return { x: 0, y: 0 }
     
+    const height = player.bounds.max.y - player.bounds.min.y
+
     return {
       x: player.position.x,
-      y: -player.position.y - 30, // Convert from Matter.js coords and adjust for body center
+      y: -player.position.y - height / 2, // Convert from Matter.js coords and adjust for body center
     }
   }
   

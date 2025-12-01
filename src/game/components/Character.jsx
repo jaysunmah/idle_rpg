@@ -3,7 +3,7 @@ import { Sprite, Assets, Spritesheet } from 'pixi.js'
 import { getCharacter, DEFAULT_CHARACTER } from '../characters'
 
 // Target character height (width will be calculated to preserve aspect ratio)
-export const CHARACTER_HEIGHT = 135
+export const CHARACTER_HEIGHT = 80
 
 const ANIMATION_FRAME_DURATION = 100 // milliseconds per frame
 
@@ -14,16 +14,12 @@ export function Character({
   isMoving = false,
   isClimbing = false,
   isAttacking = false,
-  showClimbIndicator = false,
   showClimbingControls = false,
   characterType = DEFAULT_CHARACTER,
 }) {
-  // Get character sprite frames based on type
+  // Get character sprite sheet config based on type
   const characterData = getCharacter(characterType)
   const spriteSheetConfig = characterData.spriteSheet
-  const spriteFrames = characterData.spriteFrames
-  const attackFrames = characterData.attackFrames
-  const climbFrames = characterData.climbFrames
   
   const containerRef = useRef(null)
   const spriteRef = useRef(null)
@@ -132,81 +128,10 @@ export function Character({
         setSpriteLoaded(true)
       } catch (error) {
         console.error('Failed to load sprite sheet:', error)
-        // Fallback to loading individual frames if sprite sheet fails
-        loadIndividualFrames()
       }
     }
     
-    const loadIndividualFrames = async () => {
-      try {
-        // Clean up previous sprite if exists
-        if (spriteRef.current) {
-          spriteRef.current.destroy()
-          spriteRef.current = null
-        }
-        
-        // Load walking/idle frames
-        const frameTextures = await Promise.all(
-          spriteFrames.map(path => Assets.load(path))
-        )
-        
-        // Load attack frames if they exist
-        let attackTextures = []
-        if (attackFrames && attackFrames.length > 0) {
-          attackTextures = await Promise.all(
-            attackFrames.map(path => Assets.load(path))
-          )
-        }
-
-        // Load climb frames if they exist
-        let climbTextures = []
-        if (climbFrames && climbFrames.length > 0) {
-          climbTextures = await Promise.all(
-            climbFrames.map(path => Assets.load(path))
-          )
-        }
-        
-        if (!mounted) return
-        
-        animationFramesRef.current = frameTextures
-        attackAnimationFramesRef.current = attackTextures.length > 0 ? attackTextures : frameTextures
-        climbAnimationFramesRef.current = climbTextures.length > 0 ? climbTextures : frameTextures
-        
-        // Clear anchor refs (use default anchors)
-        walkAnchorsRef.current = []
-        attackAnchorsRef.current = []
-        climbAnchorsRef.current = []
-        
-        // Create sprite with first frame
-        const sprite = new Sprite(frameTextures[0])
-        sprite.anchor.set(0.5, 0.9) // Anchor at bottom center (feet)
-        
-        // Scale uniformly to preserve aspect ratio based on target height
-        const texture = frameTextures[0]
-        const aspectRatio = texture.width / texture.height
-        sprite.height = CHARACTER_HEIGHT
-        sprite.width = CHARACTER_HEIGHT * aspectRatio
-        
-        spriteRef.current = sprite
-        
-        if (containerRef.current) {
-          // Remove any existing children
-          containerRef.current.removeChildren()
-          containerRef.current.addChild(sprite)
-        }
-        
-        setSpriteLoaded(true)
-      } catch (error) {
-        console.error('Failed to load character sprite:', error)
-      }
-    }
-    
-    // Use sprite sheet if available, otherwise load individual frames
-    if (spriteSheetConfig) {
-      loadSpriteSheet()
-    } else {
-      loadIndividualFrames()
-    }
+    loadSpriteSheet()
     
     return () => {
       mounted = false
@@ -214,14 +139,21 @@ export function Character({
         spriteRef.current.destroy()
       }
     }
-  }, [spriteSheetConfig, spriteFrames, attackFrames, climbFrames])
+  }, [spriteSheetConfig])
 
   // Helper to update sprite texture and anchor for a given frame
   const updateSpriteFrame = (frames, anchors, frameIndex) => {
     if (!spriteRef.current || frames.length === 0) return
     
     const idx = frameIndex % frames.length
-    spriteRef.current.texture = frames[idx]
+    const texture = frames[idx]
+    spriteRef.current.texture = texture
+    
+    // Maintain fixed height and aspect ratio
+    // Setting height adjusts scale.y to match the target height
+    spriteRef.current.height = CHARACTER_HEIGHT
+    // Match x scale to y scale to preserve aspect ratio
+    spriteRef.current.scale.x = spriteRef.current.scale.y
     
     // Update anchor if we have per-frame anchor data
     if (anchors && anchors.length > idx) {
@@ -269,13 +201,16 @@ export function Character({
         )
       } else if (isClimbing) {
         // Climb animation
-        animationTimeRef.current += delta
-        
-        if (animationTimeRef.current >= ANIMATION_FRAME_DURATION) {
-          animationTimeRef.current = 0
-          const frames = climbAnimationFramesRef.current
-          currentFrameRef.current = (currentFrameRef.current + 1) % frames.length
+        if (isMoving) {
+          animationTimeRef.current += delta
+          
+          if (animationTimeRef.current >= ANIMATION_FRAME_DURATION) {
+            animationTimeRef.current = 0
+            const frames = climbAnimationFramesRef.current
+            currentFrameRef.current = (currentFrameRef.current + 1) % frames.length
+          }
         }
+        
         // Clamp frame index if needed
         if (currentFrameRef.current >= climbAnimationFramesRef.current.length) {
           currentFrameRef.current = 0
@@ -335,37 +270,6 @@ export function Character({
         scale={{ x: facingRight ? 1 : -1, y: 1 }}
       />
       
-      {/* Climb indicator */}
-      {showClimbIndicator && (
-        <pixiText
-          text="↑↓ Climb"
-          x={x + (facingRight ? 30 : -30)}
-          y={y - CHARACTER_HEIGHT - 45}
-          anchor={0.5}
-          style={{
-            fill: 0xffff00,
-            fontSize: 14,
-            fontWeight: 'bold',
-            stroke: { color: 0x000000, width: 2 },
-          }}
-        />
-      )}
-      
-      {/* Jump indicator while climbing */}
-      {showClimbingControls && (
-        <pixiText
-          text="SPACE: Jump  ←→: Dismount"
-          x={x}
-          y={y - CHARACTER_HEIGHT - 50}
-          anchor={0.5}
-          style={{
-            fill: 0x88ffff,
-            fontSize: 12,
-            fontWeight: 'bold',
-            stroke: { color: 0x000000, width: 2 },
-          }}
-        />
-      )}
     </>
   )
 }

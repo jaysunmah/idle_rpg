@@ -160,64 +160,8 @@ function App() {
         selectedCharacter={selectedCharacter}
       />
       
-      {/* UI Overlay */}
+      {/* UI Overlay - Upgrades only now */}
       <div className="ui-overlay">
-        <div className="stats-panel">
-          {/* Character Stats */}
-          <div className="character-stats">
-            <h2 className="character-name">{characterData.name}</h2>
-            <div className="character-level">Level {character.level}</div>
-            
-            <div className="stat-bar">
-              <div className="stat-bar-label">
-                <span>HP</span>
-                <span>{character.health} / {character.maxHealth}</span>
-              </div>
-              <div className="stat-bar-track">
-                <div 
-                  className="stat-bar-fill health"
-                  style={{ width: `${(character.health / character.maxHealth) * 100}%` }}
-                />
-              </div>
-            </div>
-            
-            <div className="stat-bar">
-              <div className="stat-bar-label">
-                <span>XP</span>
-                <span>{character.xp} / {character.xpToNext}</span>
-              </div>
-              <div className="stat-bar-track">
-                <div 
-                  className="stat-bar-fill xp"
-                  style={{ width: `${(character.xp / character.xpToNext) * 100}%` }}
-                />
-              </div>
-            </div>
-            
-            <div className="stat-row">
-              <div className="stat-item">
-                <span className="stat-icon">⚔️</span>
-                <span className="stat-value">{character.baseDamage}</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-icon">💨</span>
-                <span className="stat-value">{(1000 / character.attackSpeed).toFixed(1)}/s</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-icon">🪙</span>
-                <span className="stat-value">{character.gold}</span>
-              </div>
-            </div>
-          </div>
-          
-          {/* Distance Progress */}
-          <div className="progress-panel">
-            <div className="progress-title">Position</div>
-            <div className="progress-value">{Math.floor(distance)}m</div>
-            <div className="progress-subtitle">Zone {Math.floor(distance / 1000) + 1}</div>
-          </div>
-        </div>
-        
         {/* Upgrades Panel */}
         {showUpgrades ? (
           <div className="upgrades-panel">
@@ -247,6 +191,55 @@ function App() {
         )}
       </div>
       
+      {/* Bottom HUD - Concise Level, HP, XP */}
+      <div className="bottom-hud">
+        <div className="stats-compact">
+          <div className="char-info">
+            <span className="char-name">{characterData.name}</span>
+            <span className="char-level">Lvl {character.level}</span>
+          </div>
+          
+          <div className="bars-container">
+            <div className="compact-bar-group">
+              <span className="bar-label">HP</span>
+              <div className="compact-bar-track">
+                <div 
+                  className="compact-bar-fill health"
+                  style={{ width: `${(character.health / character.maxHealth) * 100}%` }}
+                />
+                <span className="bar-text">{character.health}/{character.maxHealth}</span>
+              </div>
+            </div>
+            
+            <div className="compact-bar-group">
+              <span className="bar-label">XP</span>
+              <div className="compact-bar-track">
+                <div 
+                  className="compact-bar-fill xp"
+                  style={{ width: `${(character.xp / character.xpToNext) * 100}%` }}
+                />
+                <span className="bar-text">{character.xp}/{character.xpToNext}</span>
+              </div>
+            </div>
+          </div>
+          
+          <div className="compact-stats">
+            <div className="c-stat" title="Damage">
+              <span>⚔️</span> {character.baseDamage}
+            </div>
+            <div className="c-stat" title="Attack Speed">
+              <span>💨</span> {(1000 / character.attackSpeed).toFixed(1)}/s
+            </div>
+            <div className="c-stat" title="Gold">
+              <span>🪙</span> {character.gold}
+            </div>
+            <div className="c-stat" title="Distance">
+              <span>📍</span> {Math.floor(distance)}m
+            </div>
+          </div>
+        </div>
+      </div>
+      
       {/* Kill Counter */}
       <div className="kill-counter">
         <div className="kill-counter-label">Enemies Slain</div>
@@ -258,12 +251,6 @@ function App() {
         <div className="zone-name">{currentBiome?.name || 'Unknown'}</div>
       </div>
       
-      {/* Controls Hint */}
-      <div className="controls-hint">
-        <div className="hint-text">← → or A/D to move</div>
-        <div className="hint-text">↑ ↓ or W/S to climb</div>
-        <div className="hint-text">SPACE to jump</div>
-      </div>
       
       {/* Auto Attack Indicator */}
       <div className="auto-attack-indicator active">
