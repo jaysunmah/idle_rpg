@@ -27,7 +27,7 @@ Conversations:
 [12]: 916c947e-15b9-43aa-9d12-0026e2a58538; Save game state with upgrades and stats; claude-4.5-opus-high-thinking;
 [13]: 78280ea0-93b1-4cd3-9336-6c1f1c57a383; Implement new game reset feature; claude-4.5-opus-high-thinking;
 [14]: 8b8fd36b-01d1-42ca-adc5-6da914fc1cb0; Fix auto attack logic for platforms; claude-4.5-opus-high-thinking;
-[15]: db5b7de3-d2f5-4d13-9adb-4d462fc3d49e; Replace wolf sprite with new sheet; claude-4.5-opus-high-thinking;
+[15]: 649e97eb-6ecc-47b5-b35f-55f110e793dd; Character facing bug in auto attack; gemini-3-pro;
 [16]: 03c545db-9049-4f43-9f42-8a1206ffb852; Bug with climbing up a ladder; claude-4.5-opus-high-thinking;
 [17]: 0da83705-6270-4d02-a72f-41e5b1e99d5e; Adjust mob movement and animation smoothness; claude-4.5-opus-high-thinking;
 [18]: 99332588-017e-436b-8bde-34bc1fb17cb2; Add selectable character asset; claude-4.5-opus-high-thinking;
