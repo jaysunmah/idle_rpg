@@ -46,15 +46,24 @@ const AI_STATE = {
 }
 
 // Helper: Find nearest enemy using weighted distance
+// Optimized from O(n log n) filter+sort to O(n) single-pass
 function findNearestEnemy(enemies, playerPos) {
   const VERTICAL_WEIGHT = 5
-  return enemies
-    .filter(e => !e.dying)
-    .sort((a, b) => {
-      const distA = Math.abs(a.worldX - playerPos.x) + Math.abs(a.platformHeight - playerPos.y) * VERTICAL_WEIGHT
-      const distB = Math.abs(b.worldX - playerPos.x) + Math.abs(b.platformHeight - playerPos.y) * VERTICAL_WEIGHT
-      return distA - distB
-    })[0] || null
+  let nearest = null
+  let minDist = Infinity
+  
+  for (let i = 0; i < enemies.length; i++) {
+    const e = enemies[i]
+    if (e.dying) continue
+    
+    const dist = Math.abs(e.worldX - playerPos.x) + Math.abs(e.platformHeight - playerPos.y) * VERTICAL_WEIGHT
+    if (dist < minDist) {
+      minDist = dist
+      nearest = e
+    }
+  }
+  
+  return nearest
 }
 
 // Helper: Check if player is in attack range of target
