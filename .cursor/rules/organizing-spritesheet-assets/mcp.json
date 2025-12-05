@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "jason test": {
+      "command": "jason test"
+    }
+  }
+}

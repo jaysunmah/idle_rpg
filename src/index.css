@@ -79,7 +79,7 @@ h1, h2, h3, h4 {
 }
 
 .zone-name {
-  font-family: 'Cinzel', serif;
+  font-family: "SF Compact Text", sans-serif;
   font-size: 18px;
   color: var(--accent-azure);
   text-shadow: 0 0 10px rgba(0, 212, 255, 0.4);
@@ -780,13 +780,20 @@ h1, h2, h3, h4 {
 
 .compact-stats {
   display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
   gap: 15px;
   padding-left: 15px;
   border-left: 1px solid var(--border-subtle);
+  border-radius: 111px;
+  font-family: Rajdhani;
+  opacity: 1;
 }
 
 .c-stat {
   display: flex;
+  justify-content: center;
   align-items: center;
   gap: 5px;
   font-size: 13px;
@@ -846,6 +853,8 @@ h1, h2, h3, h4 {
   position: absolute;
   top: 20px;
   right: 20px;
+  width: 0px;
+  height: 0px;
   background: rgba(10, 10, 20, 0.95);
   border: 1px solid var(--border-subtle);
   border-radius: 12px;
@@ -854,6 +863,7 @@ h1, h2, h3, h4 {
   cursor: pointer;
   backdrop-filter: blur(10px);
   transition: all 0.2s ease;
+  overflow: hidden;
 }
 
 .upgrades-toggle:hover {
@@ -868,9 +878,9 @@ h1, h2, h3, h4 {
   right: 70px;
   background: rgba(10, 10, 20, 0.95);
   border: 1px solid var(--border-subtle);
-  border-radius: 12px;
-  padding: 12px 16px;
-  font-size: 20px;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 14px;
   cursor: pointer;
   backdrop-filter: blur(10px);
   transition: all 0.2s ease;
