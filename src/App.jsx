@@ -156,10 +156,10 @@ function App() {
     },
     {
       name: 'Swift Strikes',
-      cost: Math.floor(100 * Math.pow(1.8, Math.floor((BASE_ATTACK_SPEED - character.attackSpeed) / 50))),
-      effect: '-50ms Attack Speed',
+      cost: Math.floor(100 * Math.pow(1.8, Math.floor((BASE_ATTACK_SPEED - character.attackSpeed) / 100))),
+      effect: '-100ms Attack Speed',
       disabled: character.attackSpeed <= 200,
-      action: () => setCharacter(prev => ({ ...prev, attackSpeed: Math.max(200, prev.attackSpeed - 50) })),
+      action: () => setCharacter(prev => ({ ...prev, attackSpeed: Math.max(200, prev.attackSpeed - 100) })),
     },
     {
       name: 'Critical Eye',
