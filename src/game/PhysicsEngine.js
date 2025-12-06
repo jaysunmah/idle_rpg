@@ -161,14 +161,15 @@ export class PhysicsEngine {
   }
   
   // Check if player is near a ladder
-  getNearbyLadders(playerX, playerY, tolerance = 30) {
+  getNearbyLadders(playerX, playerY, tolerance = 45) {
     return this.ladders.filter(ladder => {
       const isNearX = Math.abs(ladder.worldX - playerX) < tolerance
       // More forgiving Y range check:
       // - Player can be slightly below the ladder bottom (to start climbing from ground/platform)
       // - Player can be at or slightly above the ladder top (to climb down from platform)
       // - Player height is ~60px, so we need to account for feet vs center position
-      const isInYRange = playerY >= ladder.bottomHeight - 30 && playerY <= ladder.topHeight + 40
+      // - Extra tolerance to handle physics imprecision at platform boundaries
+      const isInYRange = playerY >= ladder.bottomHeight - 40 && playerY <= ladder.topHeight + 50
       return isNearX && isInYRange
     })
   }

@@ -1,5 +1,5 @@
 import { Application, extend, useApplication } from '@pixi/react'
-import { Container, Graphics, Text, Sprite, Assets } from 'pixi.js'
+import { Container, Graphics, Text, Sprite, Assets, Spritesheet } from 'pixi.js'
 import { useRef, useState, useEffect, useCallback, useMemo, memo } from 'react'
 import {
   BIOMES,
@@ -7,8 +7,8 @@ import {
   drawTerrain,
   drawParticles,
   ENEMY_TYPES,
-  drawEnemy,
   drawHealthBar,
+  drawTargetIndicator,
   drawPlatform,
   drawLadder,
   PLATFORM_STYLES,
@@ -381,6 +381,9 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
   const aiStateRef = useRef({ state: AI_STATE.MOVING_RIGHT, targetId: null })
   const wasAutoAttackEnabledRef = useRef(false)
   
+  // Track AI target for rendering indicator
+  const [aiTargetId, setAiTargetId] = useState(null)
+  
   // Initialize physics
   useEffect(() => {
     physicsRef.current = new PhysicsEngine()
@@ -395,9 +398,41 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
   useEffect(() => {
     const loadEnemySprites = async () => {
       try {
-        // Load sprites for each enemy type that has spriteFrames defined
+        // Track loaded spritesheets to avoid duplicate loading
+        const loadedSheets = new Map()
+        
+        // Load sprites for each enemy type
         for (const [typeKey, enemyType] of Object.entries(ENEMY_TYPES)) {
-          if (enemyType.spriteFrames && enemyType.spriteFrames.length > 0) {
+          // Handle sprite sheet format (JSON + PNG)
+          if (enemyType.spriteSheet) {
+            const { json, image, animation } = enemyType.spriteSheet
+            const sheetKey = json
+            
+            let spritesheet = loadedSheets.get(sheetKey)
+            
+            if (!spritesheet) {
+              // Load the sprite sheet JSON
+              const response = await fetch(json)
+              const atlasData = await response.json()
+              
+              // Load the base texture (the PNG image)
+              const baseTexture = await Assets.load(image)
+              
+              // Create the spritesheet
+              spritesheet = new Spritesheet(baseTexture, atlasData)
+              await spritesheet.parse()
+              
+              loadedSheets.set(sheetKey, spritesheet)
+            }
+            
+            // Get the animation frames
+            const frameTextures = spritesheet.animations[animation] || []
+            if (frameTextures.length > 0) {
+              enemySpritesRef.current.set(typeKey, frameTextures)
+            }
+          }
+          // Handle individual frame files (legacy format)
+          else if (enemyType.spriteFrames && enemyType.spriteFrames.length > 0) {
             const frameTextures = await Promise.all(
               enemyType.spriteFrames.map(path => Assets.load(path))
             )
@@ -606,10 +641,8 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
     
     const distanceProgress = Math.floor(playerPos.x / 1000)
     
-    let availableTypes = ['slime']
-    if (distanceProgress >= 1) availableTypes.push('golem') // Golems spawn early in level1
-    if (distanceProgress >= 2) availableTypes.push('bat')
-    if (distanceProgress >= 5) availableTypes.push('skeleton')
+    let availableTypes = ['wolf']
+    if (distanceProgress >= 1) availableTypes.push('bear') // Bears spawn early in level1
     
     const typeKey = availableTypes[Math.floor(Math.random() * availableTypes.length)]
     const type = ENEMY_TYPES[typeKey]
@@ -844,11 +877,28 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
       
       // Update AI state ref
       const prevStateName = aiStateRef.current.state
+      const prevTargetId = aiStateRef.current.targetId
       aiStateRef.current = { state: aiResult.state, targetId: aiResult.targetId }
+      
+      // Update target ID for rendering (only when changed to avoid re-renders)
+      if (aiResult.targetId !== prevTargetId) {
+        setAiTargetId(aiResult.targetId)
+      }
       
       // Notify parent of state changes (or on first enable)
       if ((justEnabled || aiResult.state !== prevStateName) && onAIStateChange) {
         onAIStateChange(aiResult.state)
+      }
+
+      // Ensure we face the target when attacking (even if standing still)
+      if (aiResult.state === AI_STATE.ATTACKING_ENEMY && aiResult.targetId) {
+        const target = enemies.find(e => e.id === aiResult.targetId)
+        if (target) {
+          const shouldFaceRight = target.worldX > playerPos.x
+          if (shouldFaceRight !== facingRight) {
+            setFacingRight(shouldFaceRight)
+          }
+        }
       }
       
       // Apply AI key overrides
@@ -858,6 +908,7 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
       wasAutoAttackEnabledRef.current = false
       if (aiStateRef.current.state !== AI_STATE.MOVING_RIGHT || aiStateRef.current.targetId !== null) {
         aiStateRef.current = { state: AI_STATE.MOVING_RIGHT, targetId: null }
+        setAiTargetId(null)
       }
       if (onAIStateChange) {
         onAIStateChange(null)
@@ -929,10 +980,12 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
       if (nearbyLadders.length > 0 && !physics.isPlayerJumping()) {
         if (currentKeys.up) {
           // Find a ladder where we are NOT at the top
-          targetLadder = nearbyLadders.find(l => currentPlayerY < l.topHeight - 5)
+          // Use generous tolerance to handle physics imprecision at platform boundaries
+          targetLadder = nearbyLadders.find(l => currentPlayerY < l.topHeight - 1)
         } else if (currentKeys.down) {
           // Find a ladder where we are NOT at the bottom
-          targetLadder = nearbyLadders.find(l => currentPlayerY > l.bottomHeight + 5)
+          // Use generous tolerance to handle physics imprecision at platform boundaries
+          targetLadder = nearbyLadders.find(l => currentPlayerY > l.bottomHeight + 1)
         }
         
         // If we are already climbing and blocked in the requested direction, 
@@ -950,8 +1003,9 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
         
         if (!isClimbing) {
           // Check start conditions to prevent immediate dismount/flicker
-          const atTop = currentPlayerY >= activeLadder.topHeight - 5
-          const atBottom = currentPlayerY <= activeLadder.bottomHeight + 5
+          // Use small tolerance (2px) to only block when truly at the end
+          const atTop = currentPlayerY >= activeLadder.topHeight - 2
+          const atBottom = currentPlayerY <= activeLadder.bottomHeight + 2
           
           const validEntry = (currentKeys.up && !atTop) || (currentKeys.down && !atBottom)
           
@@ -1191,10 +1245,20 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
         const enemyFrames = enemySpritesRef.current.get(enemy.type)
         const currentFrame = enemy.animationFrame || 0
         
+        // Check if this enemy is the current AI target
+        const isTargeted = aiTargetId === enemy.id && autoAttackEnabled
+        
         return (
           <pixiContainer key={`enemy-${enemy.id}`} x={screenPos.x} y={screenPos.y + yOffset} scale={{ x: enemy.patrolDirection === 1 ? 1 : -1, y: 1 }}>
-            {/* Render sprite if available, otherwise fallback to drawn graphics */}
-            {enemyFrames && enemyFrames[currentFrame] ? (
+            {/* Target indicator for auto-attack (rendered behind enemy) */}
+            {isTargeted && (
+              <pixiGraphics 
+                scale={{ x: enemy.patrolDirection === 1 ? 1 : -1, y: 1 }}
+                draw={(g) => drawTargetIndicator(g, enemyWidth, enemyHeight)} 
+              />
+            )}
+            {/* Render enemy sprite */}
+            {enemyFrames && enemyFrames[currentFrame] && (
               <pixiSprite
                 texture={enemyFrames[currentFrame]}
                 anchor={{ x: 0.5, y: 1 }}
@@ -1202,8 +1266,6 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
                 height={enemyHeight}
                 alpha={enemy.dying ? 0.5 : (enemy.hit ? 0.8 : 1)}
               />
-            ) : (
-              <pixiGraphics draw={(g) => drawEnemy(g, enemy.type, enemy.hit, enemy.dying)} />
             )}
             <pixiGraphics y={-enemyHeight - 15} scale={{ x: enemy.patrolDirection === 1 ? 1 : -1, y: 1 }} draw={(g) => drawHealthBar(g, enemy.health, enemy.maxHealth)} />
           </pixiContainer>
