@@ -1,9 +1,7 @@
 ---
-enabled: true
-title: Generating Assets
-description: This package will describe how to generate assets for a 2D RPG adventure game.
+description: This package will describe how to generate assets for a 2D RPG adventure game. This is a sldkfj dlksjf sdlkj sdf dsjlfksjdlfksdjflksdjflsdkjflsdkjs
+alwaysApply: false
 ---
-
 # Generating Assets Overview
 
 Generate the asset in a whimsical, 2D RPG adventure game theme. Think "MapleStory".
