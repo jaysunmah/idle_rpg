@@ -1,5 +1,5 @@
 export { Character, CHARACTER_HEIGHT } from './Character'
-export { ENEMY_TYPES, drawEnemy, drawHealthBar } from './Enemy'
+export { ENEMY_TYPES, drawHealthBar, drawTargetIndicator } from './Enemy'
 export { PLATFORM_STYLES, drawPlatform } from './Platform'
 export { LADDER_STYLES, drawLadder } from './Ladder'
 export { BIOMES, getBiomeForDistance, drawTerrain, drawParticles } from './Terrain'

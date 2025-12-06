@@ -3,7 +3,6 @@ enabled: true
 title: Test and Deploy
 description: Test and Deploy capabilities for the AI assistant
 ---
-
 # Test and Deploy
 
 ## Workflow
