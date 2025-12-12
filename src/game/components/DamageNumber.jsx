@@ -7,7 +7,6 @@ export function drawDamageNumber(g, value, isCrit, age) {
   const scale = isCrit ? 1.2 + age * 0.3 : 1 + age * 0.2
   
   // Draw text background/shadow
-  const text = isCrit ? `${value}!` : `${value}`
   const fontSize = isCrit ? 28 : 22
   const color = isCrit ? 0xffdd44 : 0xffffff
   

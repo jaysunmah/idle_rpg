@@ -2,16 +2,21 @@ import { useRef, useEffect, useCallback } from 'react'
 
 export function useGameLoop(callback, deps = []) {
   const frameRef = useRef()
-  const lastTimeRef = useRef(performance.now())
+  const lastTimeRef = useRef(() => performance.now())
   const callbackRef = useRef(callback)
+  
+  // Initialize lastTimeRef on first render
+  if (typeof lastTimeRef.current === 'function') {
+    lastTimeRef.current = lastTimeRef.current()
+  }
   
   // Update callback ref when callback changes
   useEffect(() => {
     callbackRef.current = callback
   }, [callback])
   
-  const loop = useCallback(() => {
-    const now = performance.now()
+  const loop = useCallback((timestamp) => {
+    const now = timestamp || performance.now()
     const delta = now - lastTimeRef.current
     lastTimeRef.current = now
     
@@ -22,6 +27,7 @@ export function useGameLoop(callback, deps = []) {
   }, [])
   
   useEffect(() => {
+    lastTimeRef.current = performance.now()
     frameRef.current = requestAnimationFrame(loop)
     
     return () => {

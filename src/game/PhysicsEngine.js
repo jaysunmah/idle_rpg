@@ -196,7 +196,6 @@ export class PhysicsEngine {
     // Player feet position in game coords (y=0 is ground, positive is up)
     // Player body center is at position.y, feet are at position.y + height/2 (in Matter.js)
     // In game coords: feet at -(position.y + height/2) = -position.y - height/2
-    const bodyHeight = body.bounds.max.y - body.bounds.min.y
     const playerFeetY = -body.bounds.max.y // bounds.max.y is bottom in Matter.js coords
     const bodyX = body.position.x
     const bodyWidth = body.bounds.max.x - body.bounds.min.x
