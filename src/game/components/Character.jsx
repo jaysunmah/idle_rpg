@@ -14,7 +14,6 @@ export function Character({
   isMoving = false,
   isClimbing = false,
   isAttacking = false,
-  showClimbingControls = false,
   characterType = DEFAULT_CHARACTER,
 }) {
   // Get character sprite sheet config based on type

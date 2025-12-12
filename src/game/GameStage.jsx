@@ -1,4 +1,4 @@
-import { Application, extend, useApplication } from '@pixi/react'
+import { Application, extend } from '@pixi/react'
 import { Container, Graphics, Text, Sprite, Assets, Spritesheet } from 'pixi.js'
 import { useRef, useState, useEffect, useCallback, useMemo, memo } from 'react'
 import {
@@ -338,8 +338,6 @@ const seededRandom = (seed) => {
 
 // Game content component (inside Application)
 function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, selectedCharacter, autoAttackEnabled, setAutoAttackEnabled, onAIStateChange, character, setCharacter, initialPlayerPos }) {
-  const app = useApplication()
-  
   // Physics engine
   const physicsRef = useRef(null)
   
@@ -353,9 +351,6 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
   const [isAttacking, setIsAttacking] = useState(false)
   const [isClimbing, setIsClimbing] = useState(false)
   const [isMoving, setIsMoving] = useState(false)
-  const [isJumping, setIsJumping] = useState(false)
-  const [isFalling, setIsFalling] = useState(false)
-  const [nearbyLadder, setNearbyLadder] = useState(null)
   
   // World objects
   const [platforms, setPlatforms] = useState([])
@@ -392,6 +387,7 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
     return () => {
       physicsRef.current?.destroy()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   
   // Load enemy sprite frames from ENEMY_TYPES definitions
@@ -803,7 +799,7 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
         return { ...enemy, health: newHealth, hit: true }
       })
     })
-  }, [character.baseDamage, character.critChance, character.critMultiplier, playerPos, facingRight, onKill])
+  }, [character.baseDamage, character.critChance, character.critMultiplier, playerPos, facingRight, onKill, attackRange, setCharacter])
   
   // Convert world to screen coordinates
   const worldToScreen = useCallback((worldX, worldY) => ({
@@ -855,8 +851,6 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
     
     // Check nearby ladder using fresh physics position
     const nearbyLadders = physics.getNearbyLadders(currentPlayerX, currentPlayerY)
-    const ladder = nearbyLadders[0]
-    setNearbyLadder(ladder)
     
     // Copy keysPressed to a local mutable object so we can override it for Auto-Attack
     const currentKeys = { ...keysPressed.current }
@@ -945,7 +939,7 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
     
     // Horizontal movement (allowed while climbing if you want to dismount)
     if (currentKeys.left) {
-      if (isClimbing && ladder && !currentKeys.up && !currentKeys.down) {
+      if (isClimbing && nearbyLadders.length > 0 && !currentKeys.up && !currentKeys.down) {
         // Dismount ladder to the left
         setIsClimbing(false)
         physics.setPlayerClimbing(false)
@@ -955,7 +949,7 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
       moving = true
     }
     if (currentKeys.right) {
-      if (isClimbing && ladder && !currentKeys.up && !currentKeys.down) {
+      if (isClimbing && nearbyLadders.length > 0 && !currentKeys.up && !currentKeys.down) {
         // Dismount ladder to the right
         setIsClimbing(false)
         physics.setPlayerClimbing(false)
@@ -1047,12 +1041,8 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
       // Keep climbing state if not pressing any direction
     }
     
-    // Update jumping/falling states
-    setIsJumping(physics.isPlayerJumping())
-    setIsFalling(physics.isPlayerFalling())
-    
     // Reset climbing if landed on ground
-    if (isClimbing && isGrounded && !ladder) {
+    if (isClimbing && isGrounded && nearbyLadders.length === 0) {
       setIsClimbing(false)
       physics.setPlayerClimbing(false)
     }
@@ -1187,7 +1177,7 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
     }
     // Character sprite is now managed via ref, no drawing needed
     
-  }, [playerPos, isClimbing, isMoving, isAttacking, isJumping, isFalling, facingRight, platforms, generatePlatformsAndLadders, spawnEnemy, attackEnemy, character.attackSpeed, width, height, scrollOffset, currentBiome, autoAttackEnabled, enemies, ladders, attackRange, onAIStateChange])
+  }, [playerPos, isClimbing, facingRight, platforms, generatePlatformsAndLadders, spawnEnemy, attackEnemy, character.attackSpeed, width, height, scrollOffset, currentBiome, autoAttackEnabled, enemies, ladders, attackRange, onAIStateChange])
   
   useGameLoop(gameUpdate)
   

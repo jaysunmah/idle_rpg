@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { useState, useEffect, useMemo, useRef } from 'react'
 
 // Seeded random number generator for consistent procedural generation

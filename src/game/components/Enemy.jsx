@@ -64,7 +64,6 @@ export function drawTargetIndicator(g, width, height) {
   // Animated pulse based on time
   const time = Date.now() / 1000
   const pulse = 0.8 + Math.sin(time * 4) * 0.2
-  const rotation = time * 2
   
   // Size of the indicator based on enemy size
   const indicatorSize = Math.max(width, height) * 0.8
