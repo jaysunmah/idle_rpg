@@ -32,8 +32,22 @@ Use the upgrade panel to spend gold on:
 
 ## Getting Started
 
+### 1. Install Dependencies
 ```bash
 npm install
+```
+
+### 2. Set Up Environment Variables (Optional)
+The game works without any configuration, but if you want to customize settings:
+
+```bash
+cp .env.example .env.local
+```
+
+See [ENVIRONMENT_SETUP.md](./ENVIRONMENT_SETUP.md) for detailed configuration options.
+
+### 3. Start Development Server
+```bash
 npm run dev
 ```
 
