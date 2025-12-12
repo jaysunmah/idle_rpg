@@ -117,8 +117,11 @@ function App() {
   const prevLevelRef = useRef(character.level)
   useEffect(() => {
     if (character.level > prevLevelRef.current) {
-      setLevelUpEffect(true)
-      setTimeout(() => setLevelUpEffect(false), 1500)
+      // Use a queued state update to avoid synchronous setState in effect
+      queueMicrotask(() => {
+        setLevelUpEffect(true)
+        setTimeout(() => setLevelUpEffect(false), 1500)
+      })
     }
     prevLevelRef.current = character.level
   }, [character.level])

@@ -1,4 +1,4 @@
-import { Application, extend, useApplication } from '@pixi/react'
+import { Application, extend } from '@pixi/react'
 import { Container, Graphics, Text, Sprite, Assets, Spritesheet } from 'pixi.js'
 import { useRef, useState, useEffect, useCallback, useMemo, memo } from 'react'
 import {
@@ -338,8 +338,6 @@ const seededRandom = (seed) => {
 
 // Game content component (inside Application)
 function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, selectedCharacter, autoAttackEnabled, setAutoAttackEnabled, onAIStateChange, character, setCharacter, initialPlayerPos }) {
-  const app = useApplication()
-  
   // Physics engine
   const physicsRef = useRef(null)
   
@@ -355,7 +353,6 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
   const [isMoving, setIsMoving] = useState(false)
   const [isJumping, setIsJumping] = useState(false)
   const [isFalling, setIsFalling] = useState(false)
-  const [nearbyLadder, setNearbyLadder] = useState(null)
   
   // World objects
   const [platforms, setPlatforms] = useState([])
@@ -856,7 +853,6 @@ function GameContent({ width, height, onStatsUpdate, onKill, onDistanceUpdate, s
     // Check nearby ladder using fresh physics position
     const nearbyLadders = physics.getNearbyLadders(currentPlayerX, currentPlayerY)
     const ladder = nearbyLadders[0]
-    setNearbyLadder(ladder)
     
     // Copy keysPressed to a local mutable object so we can override it for Auto-Attack
     const currentKeys = { ...keysPressed.current }

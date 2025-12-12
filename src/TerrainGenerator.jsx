@@ -7,14 +7,6 @@ const seededRandom = (seed) => {
   return x - Math.floor(x)
 }
 
-// Platform heights (from ground)
-export const PLATFORM_LEVELS = {
-  ground: 0,
-  level1: 120,
-  level2: 240,
-  level3: 360,
-}
-
 // Biome definitions
 const BIOMES = {
   darkForest: {
@@ -744,5 +736,4 @@ export function TerrainGenerator({
   )
 }
 
-export { BIOMES, getBiomeForDistance }
 export default TerrainGenerator
