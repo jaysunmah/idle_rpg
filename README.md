@@ -39,6 +39,18 @@ npm run dev
 
 Then open http://localhost:5173 in your browser.
 
+### Environment Variables
+
+This project supports environment variables for configuration. See [ENVIRONMENT_SETUP.md](./ENVIRONMENT_SETUP.md) for detailed setup instructions.
+
+A `.env.example` file is provided as a template. Copy it to `.env` and customize as needed:
+
+```bash
+cp .env.example .env
+```
+
+**Note:** Environment variables are optional - the game works out of the box without any configuration.
+
 ## Tech Stack
 
 - React 19
