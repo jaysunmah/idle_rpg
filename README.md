@@ -39,6 +39,16 @@ npm run dev
 
 Then open http://localhost:5173 in your browser.
 
+### Environment Variables
+
+This project doesn't require any environment variables to run. However, if you want to configure optional features or add integrations in the future, see [ENVIRONMENT_SETUP.md](./ENVIRONMENT_SETUP.md) for detailed instructions.
+
+Quick setup:
+```bash
+cp .env.example .env.local
+# Edit .env.local with your values (optional)
+```
+
 ## Tech Stack
 
 - React 19
