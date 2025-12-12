@@ -4,6 +4,7 @@ import { GameStage, BIOMES, getBiomeForDistance } from './game'
 import { CharacterSelect } from './components'
 import { getCharacter, DEFAULT_CHARACTER } from './game/characters'
 import { loadGame, saveGame, clearSave } from './game/persistence'
+import config from './config'
 
 // Game states
 const GAME_STATE = {
@@ -37,7 +38,7 @@ function App() {
   const getInitialStats = useCallback((charId) => {
     const charData = getCharacter(charId)
     return {
-      level: 1,
+      level: config.startingLevel,
       xp: 0,
       xpToNext: 100,
       maxHealth: 100,
@@ -46,7 +47,7 @@ function App() {
       critChance: 0.1 + charData.stats.critChanceBonus,
       critMultiplier: 2,
       attackSpeed: Math.floor(BASE_ATTACK_SPEED / charData.stats.attackSpeedMultiplier),
-      gold: 0,
+      gold: config.startingGold,
     }
   }, [])
   

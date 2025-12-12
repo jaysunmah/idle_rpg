@@ -32,8 +32,39 @@ Use the upgrade panel to spend gold on:
 
 ## Getting Started
 
+### Installation
+
 ```bash
 npm install
+```
+
+### Environment Variables (Optional)
+
+The project includes environment variable support for customization:
+
+1. **For local development**: Create a `.env.local` file (copy from `.env.example`)
+   ```bash
+   cp .env.example .env.local
+   ```
+
+2. **Edit `.env.local`** with your preferred settings:
+   ```bash
+   VITE_DEBUG_MODE=true
+   VITE_SHOW_FPS=true
+   VITE_STARTING_GOLD=100
+   ```
+
+3. The following env files are supported:
+   - `.env` - Loaded in all cases
+   - `.env.local` - Loaded in all cases, ignored by git
+   - `.env.development` - Loaded in development mode
+   - `.env.production` - Loaded in production mode
+
+**Note:** All environment variables must be prefixed with `VITE_` to be accessible in your code.
+
+### Running the Game
+
+```bash
 npm run dev
 ```
 
