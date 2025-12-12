@@ -4,6 +4,7 @@ import { GameStage, BIOMES, getBiomeForDistance } from './game'
 import { CharacterSelect } from './components'
 import { getCharacter, DEFAULT_CHARACTER } from './game/characters'
 import { loadGame, saveGame, clearSave } from './game/persistence'
+import ENV from './config/env'
 
 // Game states
 const GAME_STATE = {
@@ -136,7 +137,7 @@ function App() {
     
     const saveInterval = setInterval(() => {
       saveGame(gameStateRef.current)
-    }, 1000)
+    }, ENV.AUTO_SAVE_INTERVAL)
     
     return () => clearInterval(saveInterval)
   }, [gameState])

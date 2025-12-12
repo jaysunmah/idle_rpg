@@ -33,11 +33,27 @@ Use the upgrade panel to spend gold on:
 ## Getting Started
 
 ```bash
+# Install dependencies
 npm install
+
+# (Optional) Set up environment variables
+cp .env.example .env.local
+# Edit .env.local with your custom settings
+
+# Start development server
 npm run dev
 ```
 
 Then open http://localhost:5173 in your browser.
+
+### Environment Variables
+
+This project supports environment variables for configuration. See [ENV_SETUP.md](./ENV_SETUP.md) for detailed setup instructions.
+
+Quick setup:
+- Copy `.env.example` to `.env.local`
+- Customize your local settings
+- All variables must be prefixed with `VITE_` to be accessible in code
 
 ## Tech Stack
 
