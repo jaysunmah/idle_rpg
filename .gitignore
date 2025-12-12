@@ -23,6 +23,10 @@ dist-ssr
 *.sln
 *.sw?
 .vercel
-.env*.local
+
+# Environment variables
+.env.local
+.env.*.local
+.env.production
 
 raw_assets
