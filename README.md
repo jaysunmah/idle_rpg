@@ -33,7 +33,14 @@ Use the upgrade panel to spend gold on:
 ## Getting Started
 
 ```bash
+# Install dependencies
 npm install
+
+# (Optional) Set up environment variables
+cp .env.example .env.local
+# Edit .env.local with your configuration if needed
+
+# Start development server
 npm run dev
 ```
 
@@ -43,5 +50,12 @@ Then open http://localhost:5173 in your browser.
 
 - React 19
 - Vite
-- Pure CSS animations (no external animation libraries)
+- PixiJS 8 for game rendering
+- Matter.js for physics
+- Pure CSS for UI animations
+
+## Environment Variables
+
+Currently, this game doesn't require any environment variables. However, if you want to add features like analytics or backend integration, see [ENV_SETUP_GUIDE.md](./ENV_SETUP_GUIDE.md) for instructions.
+
 # idle_rpg
