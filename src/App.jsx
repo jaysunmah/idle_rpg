@@ -14,9 +14,6 @@ const GAME_STATE = {
 // Game constants
 const BASE_ATTACK_SPEED = 1000
 
-// Calculate XP needed for level
-const xpForLevel = (level) => Math.floor(100 * Math.pow(1.5, level - 1))
-
 function App() {
   // Load saved game once on mount
   const [savedGame] = useState(() => loadGame())
@@ -52,6 +49,16 @@ function App() {
   
   const [character, setCharacter] = useState(() => savedGame?.character || getInitialStats(DEFAULT_CHARACTER))
   
+  // State declarations (must come before callbacks that use them)
+  const [distance, setDistance] = useState(savedGame?.distance || 0)
+  const [kills, setKills] = useState(savedGame?.kills || 0)
+  const [levelUpEffect, setLevelUpEffect] = useState(false)
+  const [showUpgrades, setShowUpgrades] = useState(false)
+  const [autoAttackEnabled, setAutoAttackEnabled] = useState(savedGame?.autoAttackEnabled || false)
+  const [showNewGameConfirm, setShowNewGameConfirm] = useState(false)
+  const [aiState, setAIState] = useState(null)
+  const [playerPos, setPlayerPos] = useState(savedGame?.playerPos || { x: 200, y: 0 })
+  
   // Handle character selection
   const handleCharacterSelect = useCallback((charId) => {
     setSelectedCharacter(charId)
@@ -72,15 +79,6 @@ function App() {
     setAutoAttackEnabled(false)
     setGameState(GAME_STATE.CHARACTER_SELECT)
   }, [getInitialStats])
-  
-  const [distance, setDistance] = useState(savedGame?.distance || 0)
-  const [kills, setKills] = useState(savedGame?.kills || 0)
-  const [levelUpEffect, setLevelUpEffect] = useState(false)
-  const [showUpgrades, setShowUpgrades] = useState(false)
-  const [autoAttackEnabled, setAutoAttackEnabled] = useState(savedGame?.autoAttackEnabled || false)
-  const [showNewGameConfirm, setShowNewGameConfirm] = useState(false)
-  const [aiState, setAIState] = useState(null)
-  const [playerPos, setPlayerPos] = useState(savedGame?.playerPos || { x: 200, y: 0 })
   
   // Handle window resize
   useEffect(() => {
