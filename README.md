@@ -33,11 +33,30 @@ Use the upgrade panel to spend gold on:
 ## Getting Started
 
 ```bash
+# Install dependencies
 npm install
+
+# Start development server
 npm run dev
 ```
 
 Then open http://localhost:5173 in your browser.
+
+### Environment Setup
+
+This project uses environment variables for configuration. See **[ENVIRONMENT_SETUP.md](./ENVIRONMENT_SETUP.md)** for detailed setup instructions.
+
+**Quick start:**
+- `.env.local` - Already configured with development defaults
+- `.env.production` - Production configuration
+- `.env.example` - Template showing all available variables
+
+**Example environment variables:**
+- `VITE_ENABLE_DEBUG` - Enable debug logging
+- `VITE_STARTING_GOLD` - Starting gold (useful for testing)
+- `VITE_SAVE_INTERVAL` - Auto-save interval in milliseconds
+
+For usage examples, see **[ENVIRONMENT_USAGE_EXAMPLES.md](./ENVIRONMENT_USAGE_EXAMPLES.md)**.
 
 ## Tech Stack
 
